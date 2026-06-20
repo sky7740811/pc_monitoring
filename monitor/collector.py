@@ -32,6 +32,7 @@ class SystemCollector:
         self.total_ram_mb = 0
         self._ndjson_path = None
         self._ndjson_file = None
+        self._prev_proc_cpu: dict[int, float] = {}  # {pid: cpu_percent}
         self.stats = {
             'cpu_pct': [], 'gpu_pct': [], 'gpu_temp': [],
             'cpu_temp': [], 'vram_pct': [], 'mem_pct': [],
@@ -380,8 +381,21 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
 
         self.prev_time = now
 
+        # CPU spike detection: track which process spiked most
+        cpu_spike = None
+        for p in processes:
+            pid = p.get('pid')
+            cpu_now = p.get('cpu_percent', 0)
+            if pid and pid in self._prev_proc_cpu:
+                delta = cpu_now - self._prev_proc_cpu[pid]
+                if delta > 5 and (cpu_spike is None or delta > cpu_spike['delta']):
+                    cpu_spike = {'name': p['name'], 'display_name': p.get('display_name', p['name']),
+                                 'pid': pid, 'delta': round(delta, 1), 'current': cpu_now}
+            self._prev_proc_cpu[pid] = cpu_now
+
         data = {
             'cpu': cpu,
+            'cpu_spike': cpu_spike,
             'gpu': gpu,
             'memory': memory,
             'disk': disk,

@@ -135,10 +135,14 @@ def analyze(data, history):
     # ─── 7. Existing single-point checks (kept from original) ───
     # GPU bottleneck (single point)
     if gpu_load > 90 and cpu_load < 60:
+        spike_txt = ''
+        spike = data.get('cpu_spike')
+        if spike:
+            spike_txt = ' (' + spike.get('display_name', spike['name']) + ' 급등)'
         alerts.append({
             'type': 'warning', 'icon': '🎮',
             'title': 'GPU 병목',
-            'message': f'GPU {gpu_load}% · CPU {cpu_load}% → 그래픽 옵션 낮춤',
+            'message': f'GPU {gpu_load}% · CPU {cpu_load}%{spike_txt}',
         })
         if bottleneck is None:
             bottleneck = 'GPU'
@@ -146,10 +150,14 @@ def analyze(data, history):
 
     # CPU bottleneck (single point)
     elif cpu_load > 85 and gpu_load < 70:
+        spike_txt = ''
+        spike = data.get('cpu_spike')
+        if spike:
+            spike_txt = ' (' + spike.get('display_name', spike['name']) + ' 급등)'
         alerts.append({
             'type': 'warning', 'icon': '⚙️',
             'title': 'CPU 병목',
-            'message': f'CPU {cpu_load}% · GPU {gpu_load}% → 백그라운드 앱 종료',
+            'message': f'CPU {cpu_load}% · GPU {gpu_load}%{spike_txt}',
         })
         if bottleneck is None:
             bottleneck = 'CPU'

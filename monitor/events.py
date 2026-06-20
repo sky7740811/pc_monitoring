@@ -19,14 +19,27 @@ SYSTEM_PROCS = {'csrss.exe', 'wininit.exe', 'services.exe', 'lsass.exe',
 
 
 def _top_n(data, key, n=3):
-    """Return top N processes by `key`, excluding critical system ones."""
+    """Return top N processes by `key`, excluding critical system ones.
+    Returns list of (display_name, value)."""
     procs = [p for p in data.get('processes', []) if p['name'] not in SYSTEM_PROCS]
     sorted_procs = sorted(procs, key=lambda p: p.get(key, 0), reverse=True)
-    return [(p['name'], p.get(key, 0)) for p in sorted_procs if p.get(key, 0) > 0][:n]
+    return [(p.get('display_name', p['name']), p.get(key, 0)) for p in sorted_procs if p.get(key, 0) > 0][:n]
 
 
 def _format_proc_list(procs, unit='%'):
     return ', '.join(f'{n}: {v}{unit}' for n, v in procs)
+
+
+def _spike_info(data):
+    """Return formatted spike message if available."""
+    spike = data.get('cpu_spike')
+    if not spike:
+        return '', ''
+    dname = spike.get('display_name', spike['name'])
+    delta = spike['delta']
+    msg = f'⚡ {dname} CPU +{delta}%p 급등'
+    detail = f'{dname}이(가) CPU 사용량이 짧은 시간에 {delta}%p 상승했습니다.'
+    return msg, detail
 
 
 def check_idle(processes):
@@ -105,7 +118,7 @@ def check(data, history):
 
     if gl > 90 and cl < 60:
         top_gpu = _top_n(data, 'gpu_sm')
-        cause = '\nGPU 사용 프로세스: ' + _format_proc_list(top_gpu) if top_gpu else ''
+        cause = '\nGPU 사용: ' + _format_proc_list(top_gpu) if top_gpu else ''
         events.append({'type': 'warning', 'icon': '\u26a0\uFE0F',
             'msg': f'GPU 병목 (GPU {gl}% · CPU {cl}%)',
             'detail': f'GPU 사용률({gl}%)이 CPU({cl}%)보다 현저히 높습니다.{cause}\n'
@@ -117,17 +130,22 @@ def check(data, history):
                       f'• CPU 오버클럭 또는 업그레이드 고려'})
     elif cl > 85 and gl < 70:
         top_cpu = _top_n(data, 'cpu_percent')
-        cause = '\nCPU 높은 프로세스:\n  ' + '\n  '.join(f'{n}: {v}%' for n, v in top_cpu) if top_cpu else ''
+        spike_msg, spike_detail = _spike_info(data)
+        cause = ''
+        if spike_msg:
+            cause = '\n' + spike_msg
+        cause += '\nCPU 높은 프로세스:\n  ' + '\n  '.join(f'{n}: {v}%' for n, v in top_cpu) if top_cpu else ''
+        detail = f'CPU 사용률({cl}%)이 GPU({gl}%)보다 현저히 높습니다.'
+        if spike_detail:
+            detail += '\n' + spike_detail
+        detail += f'{cause}\n\n'
+        detail += '위 프로세스 중 게임 외 불필요한 것을 종료하면\nCPU 병목이 완화될 수 있습니다.\n\n'
+        detail += '권장 조치:\n• 위 목록에서 게임이 아닌 프로세스 종료\n'
+        detail += '• 해상도/그래픽 옵션 올리기 (GPU 부하 증가)\n'
+        detail += '• CPU 집중 설정(물리 효과, NPC 수 등) 낮추기\n'
+        detail += '• CPU 오버클럭 검토'
         events.append({'type': 'warning', 'icon': '\u26a0\uFE0F',
-            'msg': f'CPU 병목 (CPU {cl}% · GPU {gl}%)',
-            'detail': f'CPU 사용률({cl}%)이 GPU({gl}%)보다 현저히 높습니다.{cause}\n\n'
-                      f'위 프로세스 중 게임 외 불필요한 것을 종료하면\n'
-                      f'CPU 병목이 완화될 수 있습니다.\n\n'
-                      f'권장 조치:\n'
-                      f'• 위 목록에서 게임이 아닌 프로세스 종료\n'
-                      f'• 해상도/그래픽 옵션 올리기 (GPU 부하 증가)\n'
-                      f'• CPU 집중 설정(물리 효과, NPC 수 등) 낮추기\n'
-                      f'• CPU 오버클럭 검토'})
+            'msg': f'CPU 병목 (CPU {cl}% · GPU {gl}%)', 'detail': detail})
 
     if vp > 90:
         top_vram = _top_n(data, 'gpu_mem')

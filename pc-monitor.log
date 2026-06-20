@@ -198,3 +198,9 @@
 2026-06-20 13:57:06,085 [ERROR] Shutdown summary error: name 'ctypes' is not defined
 2026-06-20 13:57:06,086 [INFO] Session saved: D:\cpu\pc-monitor\log\2026-06-20_135320.html
 2026-06-20 13:57:06,112 [INFO] Detailed report saved: D:\cpu\pc-monitor\log\report_2026-06-20_135320.html
+2026-06-20 13:59:05,896 [DEBUG] Using proactor: IocpProactor
+2026-06-20 13:59:06,049 [INFO] Collector primed
+2026-06-20 14:15:30,560 [DEBUG] Using proactor: IocpProactor
+2026-06-20 14:15:32,631 [INFO] Collector primed
+2026-06-20 14:15:32,644 [INFO] Session saved: D:\cpu\pc-monitor\log\2026-06-20_141530.html
+2026-06-20 14:15:32,644 [INFO] Session saved on shutdown
