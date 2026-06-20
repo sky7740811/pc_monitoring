@@ -15,6 +15,8 @@ const N = 60;
 
 const chartsOk = typeof Chart !== 'undefined';
 const logEvents = [];
+let sortCol = 'cpu', sortAsc = false;
+let procData = [];
 function makeChart(ctx, color) {
   if (!chartsOk) return null;
   const c = ctx.getContext('2d');
@@ -119,20 +121,8 @@ function update(d) {
   }
   diagList.innerHTML = dh;
 
-  let ph = '';
-  for (const p of procs) {
-    const cw = Math.min(100, p.cpu_percent);
-    const mw = Math.min(100, p.memory_mb / 512 * 100);
-     const ms = p.memory_mb > 1024 ? (p.memory_mb / 1024).toFixed(1) + 'G' : p.memory_mb + 'M';
-     const gw = p.gpu_sm || 0;
-     ph += '<div class="proc-row" style="grid-template-columns:1fr 55px 55px 50px">'
-        + '<span class="proc-name" title="' + p.name + '">' + p.name + '</span>'
-        + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar cpu" style="width:' + cw + '%"></div></div><span class="proc-stat">' + p.cpu_percent + '%</span></div>'
-        + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar mem" style="width:' + mw + '%"></div></div><span class="proc-stat">' + ms + '</span></div>'
-        + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar" style="background:#ff6b35;width:' + gw + '%"></div></div><span class="proc-stat">' + gw + '%</span></div>'
-        + '</div>';
-  }
-   procList.innerHTML = ph;
+  procData = procs;
+  renderProcs();
 
    // Log - accumulate abnormal events
    if (d.log_buffer) {
@@ -154,6 +144,41 @@ function update(d) {
      $('logList').innerHTML = lh || '<div style="text-align:center;padding:16px 0;font-size:.65rem;opacity:.25">\uBAA8\uB450 \uC815\uC0C1</div>';
    }
 }
+
+function renderProcs() {
+  const sorted = [...procData].sort((a, b) => {
+    let va, vb;
+    if (sortCol === 'cpu') { va = a.cpu_percent; vb = b.cpu_percent; }
+    else if (sortCol === 'ram') { va = a.memory_mb; vb = b.memory_mb; }
+    else { va = a.gpu_sm || 0; vb = b.gpu_sm || 0; }
+    return sortAsc ? va - vb : vb - va;
+  });
+  let ph = '';
+  for (const p of sorted) {
+    const cw = Math.min(100, p.cpu_percent);
+    const mw = Math.min(100, p.memory_mb / 512 * 100);
+    const ms = p.memory_mb > 1024 ? (p.memory_mb / 1024).toFixed(1) + 'G' : p.memory_mb + 'M';
+    const gw = p.gpu_sm || 0;
+    ph += '<div class="proc-row" style="grid-template-columns:1fr 55px 55px 50px">'
+       + '<span class="proc-name" title="' + p.name + '">' + p.name + '</span>'
+       + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar cpu" style="width:' + cw + '%"></div></div><span class="proc-stat">' + p.cpu_percent + '%</span></div>'
+       + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar mem" style="width:' + mw + '%"></div></div><span class="proc-stat">' + ms + '</span></div>'
+       + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar" style="background:#ff6b35;width:' + gw + '%"></div></div><span class="proc-stat">' + gw + '%</span></div>'
+       + '</div>';
+  }
+  procList.innerHTML = ph;
+}
+
+document.querySelectorAll('.sort-hdr').forEach(el => {
+  el.onclick = () => {
+    const col = el.dataset.sort;
+    if (sortCol === col) sortAsc = !sortAsc;
+    else { sortCol = col; sortAsc = false; }
+    document.querySelectorAll('.sort-hdr').forEach(h => h.style.color = '');
+    el.style.color = sortCol === 'cpu' ? '#00d4ff' : sortCol === 'ram' ? '#7c3aed' : '#ff6b35';
+    renderProcs();
+  };
+});
 
 stopBtn.onclick = () => {
   fetch('/stop', { method: 'POST' }).catch(() => {});
