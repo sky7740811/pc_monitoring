@@ -71,38 +71,100 @@ async def _shutdown():
         top5_cpu = collector.get_process_top5('cpu')
         top5_ram = collector.get_process_top5('ram')
         top5_gpu = collector.get_process_top5('gpu')
+        logs = collector.log_buffer
 
         w = s['warnings']; d = s['dangers']
-        status = 'GOOD' if w == 0 and d == 0 else 'WARNING' if d == 0 else 'DANGER'
 
+        # --- Diagnostic humain ---
+        diag_parts = []
+
+        # CPU
+        ca, cm = s['cpu_avg'], s['cpu_max']
+        if cm > 90:
+            diag_parts.append(f'CPU가 최대 {cm}%까지 치솟았습니다. 게임 중 CPU 부하가 상당했습니다.')
+        elif ca > 70:
+            diag_parts.append(f'CPU 평균 {ca}%로 부하가 높은 편입니다.')
+        elif ca < 30:
+            diag_parts.append(f'CPU는 평균 {ca}%로 여유롭게 동작했습니다.')
+        else:
+            diag_parts.append(f'CPU는 평균 {ca}%로 무난하게 동작했습니다.')
+
+        # GPU
+        ga, gm = s['gpu_avg'], s['gpu_max']
+        if gm > 95:
+            diag_parts.append(f'GPU가 최대 {gm}%까지 사용되었습니다. GPU 거의 풀가동.')
+        elif ga > 80:
+            diag_parts.append(f'GPU 평균 {ga}%로 게임이 GPU를 꽤 활용했습니다.')
+        else:
+            diag_parts.append(f'GPU는 평균 {ga}% 사용되었습니다.')
+
+        # Temp
+        gt_max = s['gpu_temp_max']
+        if gt_max > 85:
+            diag_parts.append(f'GPU 온도가 최대 {gt_max}°C까지 올라갔습니다. 온도 관리가 필요합니다!')
+        elif gt_max > 75:
+            diag_parts.append(f'GPU 최고 온도는 {gt_max}°C였습니다.')
+        else:
+            diag_parts.append(f'GPU 온도는 최대 {gt_max}°C로 안정적이었습니다.')
+
+        # RAM
+        mr = s['mem_avg']
+        if mr > 85:
+            diag_parts.append(f'RAM 사용률 평균 {mr}%로 메모리가 꽉 찼습니다. 닫지 않은 프로그램을 확인하세요.')
+        elif mr > 70:
+            diag_parts.append(f'RAM 평균 {mr}% 사용.')
+        else:
+            diag_parts.append(f'RAM은 평균 {mr}% 사용으로 넉넉했습니다.')
+
+        # Alerts
+        if d > 0 or w > 0:
+            danger_events = [e['msg'] for e in logs if e['type'] == 'danger']
+            warn_events = [e['msg'] for e in logs if e['type'] == 'warning']
+            diag_parts.append(f'\n⚠️ 경고 {w}회 / 🔥 위험 {d}회 발생:')
+            if danger_events:
+                diag_parts.append(f'  위험: {danger_events[0]}')
+            if warn_events:
+                diag_parts.append(f'  경고: {warn_events[0]}')
+        else:
+            diag_parts.append(f'\n경고나 위험 없이 안정적으로 동작했습니다.')
+
+        # Bottleneck
+        bottleneck_events = [e['msg'] for e in logs if '병목' in e['msg']]
+        if bottleneck_events:
+            diag_parts.append(f'\n⚡ 병목 감지됨: {bottleneck_events[-1]}')
+
+        diag = '\n'.join(diag_parts)
+
+        # --- Build message ---
+        status = '🟢 GOOD' if w == 0 and d == 0 else '🟡 WARNING' if d == 0 else '🔴 DANGER'
         msg = (
-            f'PC Monitor - Session Report\n'
-            f'Duration: {s["duration"]}\n'
-            f'Status: {status}  (Health: {s.get("health", "-")}/100)\n'
-            f'─────────────────────\n'
-            f'CPU: avg {s["cpu_avg"]}% / max {s["cpu_max"]}%\n'
-            f'GPU: avg {s["gpu_avg"]}% / max {s["gpu_max"]}%\n'
-            f'GPU Temp: avg {s["gpu_temp_avg"]}°C / max {s["gpu_temp_max"]}°C\n'
-            f'RAM: avg {s["mem_avg"]}%\n'
-            f'─────────────────────\n'
-            f'⚠️ {w} warnings  🔥 {d} dangers\n\n'
+            f'📊 PC Monitor Session Report\n'
+            f'⏱ {s["duration"]}  |  {status}\n'
+            f'{"─"*50}\n'
+            f'{diag}\n'
+            f'{"─"*50}\n'
+            f'CPU:   avg {s["cpu_avg"]}%  max {s["cpu_max"]}%\n'
+            f'GPU:   avg {s["gpu_avg"]}%  max {s["gpu_max"]}%\n'
+            f'온도:  GPU max {s["gpu_temp_max"]}°C\n'
+            f'RAM:   avg {s["mem_avg"]}%\n'
+            f'{"─"*50}\n'
             f'Top 5 CPU:\n'
         )
         for i, (n, v) in enumerate(top5_cpu, 1):
-            flag = '  ← HIGH' if v > 50 else ''
+            flag = ' ◀ 높음' if v > 50 else ''
             msg += f' {i}. {n}: {v}%{flag}\n'
 
         if top5_ram and top5_ram[0][1] > 0:
             msg += f'\nTop 5 RAM:\n'
             for i, (n, v) in enumerate(top5_ram, 1):
                 v_gb = round(v / 1024, 1)
-                flag = '  ← HIGH' if v > 2048 else ''
+                flag = ' ◀ 높음' if v > 2048 else ''
                 msg += f' {i}. {n}: {v_gb}GB{flag}\n'
 
         if top5_gpu and top5_gpu[0][1] > 0:
             msg += f'\nTop 5 GPU:\n'
             for i, (n, v) in enumerate(top5_gpu, 1):
-                flag = '  ← HIGH' if v > 50 else ''
+                flag = ' ◀ 높음' if v > 50 else ''
                 msg += f' {i}. {n}: {v}%{flag}\n'
 
         ctypes.windll.user32.MessageBoxW(0, msg, 'PC Monitor', 0)

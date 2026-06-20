@@ -125,6 +125,70 @@ class SystemCollector:
         if not rows:
             rows = '<tr><td colspan="4" style="text-align:center;opacity:.3">Aucun evenement anormal</td></tr>'
 
+        s = summary
+        top5_cpu = self.get_process_top5('cpu')
+        top5_ram = self.get_process_top5('ram')
+        top5_gpu = self.get_process_top5('gpu')
+
+        # Human diagnostic
+        diag_lines = []
+        if s['cpu_max'] > 90:
+            diag_lines.append(f'CPU가 최대 {s["cpu_max"]}%까지 올라갔습니다. 게임 중 CPU 부하가 높았습니다.')
+        elif s['cpu_avg'] < 30:
+            diag_lines.append(f'CPU는 평균 {s["cpu_avg"]}%로 여유롭게 동작했습니다.')
+        else:
+            diag_lines.append(f'CPU는 평균 {s["cpu_avg"]}%로 동작했습니다.')
+
+        if s['gpu_max'] > 95:
+            diag_lines.append(f'GPU가 최대 {s["gpu_max"]}%까지 사용되어 거의 풀가동 상태였습니다.')
+        elif s['gpu_avg'] > 70:
+            diag_lines.append(f'GPU를 평균 {s["gpu_avg"]}% 활용했습니다.')
+        else:
+            diag_lines.append(f'GPU는 평균 {s["gpu_avg"]}% 사용되었습니다.')
+
+        if s['gpu_temp_max'] > 85:
+            diag_lines.append(f'GPU 온도가 최대 {s["gpu_temp_max"]}°C까지 올라갔습니다. 온도 관리가 필요합니다.')
+        elif s['gpu_temp_max'] > 75:
+            diag_lines.append(f'GPU 최고 온도는 {s["gpu_temp_max"]}°C입니다.')
+        else:
+            diag_lines.append(f'GPU 온도는 최대 {s["gpu_temp_max"]}°C로 안정적이었습니다.')
+
+        if s['mem_avg'] > 85:
+            diag_lines.append(f'RAM 사용률 평균 {s["mem_avg"]}%로 메모리가 부족했습니다.')
+        elif s['mem_avg'] > 70:
+            diag_lines.append(f'RAM 평균 {s["mem_avg"]}% 사용.')
+        else:
+            diag_lines.append(f'RAM은 평균 {s["mem_avg"]}% 사용으로 충분했습니다.')
+
+        if s['warnings'] > 0 or s['dangers'] > 0:
+            diag_lines.append(f'경고 {s["warnings"]}회, 위험 {s["dangers"]}회 발생했습니다.')
+        else:
+            diag_lines.append('안정적으로 동작했습니다.')
+
+        diag_html = '<br>'.join(diag_lines)
+
+        # Top5 tables
+        def top5_table(items, unit='%', high_thresh=50):
+            if not items or items[0][1] == 0:
+                return ''
+            rows_t5 = ''
+            for i, (n, v) in enumerate(items, 1):
+                if unit == 'MB':
+                    val_str = f'{round(v/1024,1)}GB'
+                else:
+                    val_str = f'{v}{unit}'
+                high = ' style="color:#ef4444"' if v > high_thresh else ''
+                rows_t5 += f'<tr><td>{i}</td><td>{n}</td><td{high}>{val_str}</td></tr>'
+            return f'''<table class="summary">
+<tr><th>#</th><th>Process</th><th>Usage</th></tr>
+{rows_t5}</table>'''
+
+        def top5_section(label, items, unit='%', thresh=50):
+            tbl = top5_table(items, unit, thresh)
+            if not tbl:
+                return ''
+            return f'<h2>Top 5 {label}</h2>{tbl}'
+
         html = f'''<!DOCTYPE html>
 <html lang="ko">
 <head><meta charset="UTF-8"><title>PC Monitor - {start_dt}</title>
@@ -140,22 +204,29 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
 .summary td:first-child{{opacity:.5}}
 .summary td:nth-child(2){{font-weight:600;color:#e8ecf4}}
 .danger{{color:#ef4444}} .warning{{color:#f59e0b}} .success{{color:#10b981}} .info{{color:#60a5fa}}
+.diag-box{{background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.15);border-radius:8px;padding:12px 14px;margin:12px 0;font-size:.8rem;line-height:1.6;color:#b0b8c4}}
+.diag-box.danger{{background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.2)}}
+.warn{{color:#ef4444;font-weight:600}}
 </style></head>
 <body>
 <h1>PC Monitor Session Report</h1>
-<p class="sub">{start_dt} ~ {summary["duration"]}</p>
+<p class="sub">{start_dt} ~ {s["duration"]}</p>
+
+<div class="diag-box{' danger' if s['dangers'] > 0 else ''}">{diag_html}</div>
 
 <h2>Summary</h2>
 <table class="summary">
-<tr><td>Duration</td><td>{summary["duration"]}</td></tr>
-<tr><td>CPU</td><td>avg {summary["cpu_avg"]}% / max {summary["cpu_max"]}%</td></tr>
-<tr><td>GPU</td><td>avg {summary["gpu_avg"]}% / max {summary["gpu_max"]}%</td></tr>
-<tr><td>GPU Temp</td><td>avg {summary["gpu_temp_avg"]}°C / max {summary["gpu_temp_max"]}°C</td></tr>
-<tr><td>CPU Temp</td><td>avg {summary["cpu_temp_avg"]}°C / max {summary["cpu_temp_max"]}°C</td></tr>
-<tr><td>VRAM Max</td><td>{summary["vram_max"]}%</td></tr>
-<tr><td>RAM avg</td><td>{summary["mem_avg"]}%</td></tr>
-<tr><td>Alerts</td><td>⚠️ {summary["warnings"]} / 🔥 {summary["dangers"]}</td></tr>
+<tr><td>Duration</td><td>{s["duration"]}</td></tr>
+<tr><td>CPU</td><td>avg {s["cpu_avg"]}% / max {s["cpu_max"]}%</td></tr>
+<tr><td>GPU</td><td>avg {s["gpu_avg"]}% / max {s["gpu_max"]}%</td></tr>
+<tr><td>GPU Temp</td><td>avg {s["gpu_temp_avg"]}°C / max {s["gpu_temp_max"]}°C</td></tr>
+<tr><td>RAM avg</td><td>{s["mem_avg"]}%</td></tr>
+<tr><td>Alerts</td><td>⚠️ {s["warnings"]} / 🔥 {s["dangers"]}</td></tr>
 </table>
+
+{top5_section('CPU', top5_cpu, '%', 50)}
+{top5_section('RAM', top5_ram, 'MB', 2048)}
+{top5_section('GPU', top5_gpu, '%', 50)}
 
 <h2>Event Log ({event_count} entries)</h2>
 <table>
