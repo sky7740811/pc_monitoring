@@ -5,6 +5,8 @@ import os
 import webbrowser
 from pathlib import Path
 
+import psutil
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -155,11 +157,12 @@ async def _shutdown():
             msg += f' {i}. {n}: {v}%{flag}\n'
 
         if top5_ram and top5_ram[0][1] > 0:
+            total_ram_mb = psutil.virtual_memory().total / (1024 * 1024)
             msg += f'\nTop 5 RAM:\n'
             for i, (n, v) in enumerate(top5_ram, 1):
-                v_gb = round(v / 1024, 1)
-                flag = ' ◀ 높음' if v > 2048 else ''
-                msg += f' {i}. {n}: {v_gb}GB{flag}\n'
+                pct = round(v / total_ram_mb * 100, 1) if total_ram_mb > 0 else 0
+                flag = '  ◀ 높음' if v > 2048 else ''
+                msg += f' {i}. {n}: {pct}%{flag}\n'
 
         if top5_gpu and top5_gpu[0][1] > 0:
             msg += f'\nTop 5 GPU:\n'

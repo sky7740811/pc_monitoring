@@ -28,6 +28,7 @@ class SystemCollector:
         self._slow_tick = 0
         self._proc_history = {}  # {name: {cpu: [], ram: [], gpu: []}}
         self._gpu_context = set()  # process names with GPU context
+        self.total_ram_mb = 0
         self.stats = {
             'cpu_pct': [], 'gpu_pct': [], 'gpu_temp': [],
             'cpu_temp': [], 'vram_pct': [], 'mem_pct': [],
@@ -41,6 +42,7 @@ class SystemCollector:
         psutil.cpu_percent(interval=None, percpu=True)
         self.prev_time = time.time()
         self.start_time = time.time()
+        self.total_ram_mb = round(psutil.virtual_memory().total / (1024 * 1024), 0)
         self._log_event('info', '🚀', '세션 시작', 'PC Monitor monitoring session started.')
         # Prime process CPU + populate cache
         try:
@@ -179,7 +181,8 @@ class SystemCollector:
             rows_t5 = ''
             for i, (n, v) in enumerate(items, 1):
                 if unit == 'MB':
-                    val_str = f'{round(v/1024,1)}GB'
+                    pct = round(v / self.total_ram_mb * 100, 1) if self.total_ram_mb > 0 else 0
+                    val_str = f'{pct}%'
                 else:
                     val_str = f'{v}{unit}'
                 high = ' style="color:#ef4444"' if v > high_thresh else ''
