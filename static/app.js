@@ -23,15 +23,15 @@ function makeChart(ctx, color, tempColor) {
   const grad = c.createLinearGradient(0, 0, 0, 42);
   grad.addColorStop(0, color + '35');
   grad.addColorStop(1, color + '00');
+  const datasets = [
+    { data: Array(N).fill(0), borderColor: color, backgroundColor: grad, borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0, yAxisID: 'y' },
+  ];
+  if (tempColor) {
+    datasets.push({ data: Array(N).fill(0), borderColor: tempColor, borderWidth: 1, fill: false, tension: 0.3, pointRadius: 0, yAxisID: 'y1', borderDash: [3, 3] });
+  }
   return new Chart(ctx, {
     type: 'line',
-    data: {
-      labels: Array(N).fill(''),
-      datasets: [
-        { data: Array(N).fill(0), borderColor: color, backgroundColor: grad, borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0, yAxisID: 'y' },
-        { data: Array(N).fill(0), borderColor: tempColor || '#ef4444', borderWidth: 1, fill: false, tension: 0.3, pointRadius: 0, yAxisID: 'y1', borderDash: [3, 3] },
-      ],
-    },
+    data: { labels: Array(N).fill(''), datasets },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
       scales: {
@@ -45,16 +45,17 @@ function makeChart(ctx, color, tempColor) {
   });
 }
 
-const cpuChart = makeChart($('cpuChart'), '#00d4ff', '#ff4444');
-const gpuChart = makeChart($('gpuChart'), '#ff6b35', '#ff4444');
-const ramChart = makeChart($('ramChart'), '#7c3aed');
+const cpuChart = makeChart($('cpuChart'), '#00d4ff', '#00d4ff');
+const gpuChart = makeChart($('gpuChart'), '#ff6b35', '#ff6b35');
+const ramChart = makeChart($('ramChart'), '#7c3aed', null);
 
 function pushChart(chart, val, temp) {
   if (!chart) return;
   chart.data.datasets[0].data.push(Math.min(100, Math.max(0, val)));
   chart.data.datasets[0].data.shift();
-  if (temp !== undefined && chart.data.datasets.length > 1) {
-    chart.data.datasets[1].data.push(Math.min(100, Math.max(0, temp)));
+  if (chart.data.datasets.length > 1) {
+    const t = temp !== undefined ? Math.min(100, Math.max(0, temp)) : 0;
+    chart.data.datasets[1].data.push(t);
     chart.data.datasets[1].data.shift();
   }
   chart.update('none');
