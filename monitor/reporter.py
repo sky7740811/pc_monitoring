@@ -156,7 +156,9 @@ def generate(raw_path, start_time, duration, summary, logs, top5_cpu, top5_ram, 
         h += f'<tr style="opacity:.4"><td></td><td>합계</td><td>{sum(v for _,v in items):.1f}%</td></tr></table>'
         return h
 
-    c_labels = json.dumps([f'{r["t"]:.0f}초' for r in rows], ensure_ascii=False)
+    # Labels en minutes, largeur proportionnelle
+    chart_w = max(400, len(rows) * 4)  # 4px par point de donnees
+    c_labels = json.dumps([f'{int(r["t"]/60)}m' for r in rows], ensure_ascii=False)
     c_cpu = json.dumps([r['cpu'] for r in rows])
     c_gpu = json.dumps([r['gpu'] for r in rows])
     c_gt = json.dumps([r['gt'] for r in rows])
@@ -174,7 +176,8 @@ h2{{font-size:.9rem;color:#8892a0;margin:20px 0 8px;letter-spacing:.5px}}
 table{{width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:8px}}
 th,td{{padding:5px 10px;text-align:left;border-bottom:1px solid rgba(255,255,255,.04)}}
 th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
-.chart-wr{{height:200px;margin:12px 0}}
+.chart-wr{{height:200px;margin:12px 0;overflow-x:auto;width:100%}}
+.chart-inner{{width:{chart_w}px;height:200px}}
 .comp{{border-radius:8px;padding:10px 12px;margin-bottom:6px;font-size:.8rem}}
 .comp.good{{background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.12)}}
 .comp.warning{{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.12)}}
@@ -203,7 +206,7 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
 {st_html('RAM', ram_st, ram_lines)}
 
 <h2>2. 타임라인 차트</h2>
-<div class="chart-wr"><canvas id="chart"></canvas></div>
+<div class="chart-wr"><div class="chart-inner"><canvas id="chart"></canvas></div></div>
 <script>
 new Chart(document.getElementById('chart'), {{
   type:'line', data:{{
