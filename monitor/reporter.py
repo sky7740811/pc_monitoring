@@ -1,4 +1,4 @@
-"""Detailed session report generator — reads NDJSON, outputs HTML."""
+"""Detailed session report — NDJSON -> HTML with event-cause analysis."""
 import json, os, statistics as stat
 from datetime import datetime
 
@@ -26,7 +26,8 @@ def generate(raw_path, start_time, duration, summary, logs, top5_cpu, top5_ram, 
             if line:
                 try: rows.append(json.loads(line))
                 except: continue
-    if not rows: return None
+    if not rows:
+        return None
 
     cpu_vals = [r['cpu'] for r in rows]
     gpu_vals = [r['gpu'] for r in rows]
@@ -38,72 +39,54 @@ def generate(raw_path, start_time, duration, summary, logs, top5_cpu, top5_ram, 
     gt_avg, gt_max = stat.mean(gt_vals), max(gt_vals)
     ram_avg = stat.mean(ram_vals)
 
-    cpu_status = _threshold(cpu_avg, 70, 90)
-    gpu_status = _threshold(gpu_avg, 80, 95)
-    gt_status = _threshold(gt_max, 75, 85)
-    ram_status = _threshold(ram_avg, 70, 90)
+    cpu_st = _threshold(cpu_avg, 70, 90)
+    gpu_st = _threshold(gpu_avg, 80, 95)
+    gt_st = _threshold(gt_max, 75, 85)
+    ram_st = _threshold(ram_avg, 70, 90)
 
-    def status_html(label, st, detail_lines):
+    def st_html(label, st, lines):
         icons = {'good': '✅', 'warning': '⚠️', 'danger': '🔥'}
         ico = icons.get(st, 'ℹ️')
-        lines = ''.join(f'<tr><td>{l}</td></tr>' for l in detail_lines)
-        return f'<div class="comp {st}"><div class="comp-h">{ico} {label}</div><table class="comp-d">{lines}</table></div>'
+        l = ''.join(f'<tr><td>{x}</td></tr>' for x in lines)
+        return f'<div class="comp {st}"><div class="comp-h">{ico} {label}</div><table class="comp-d">{l}</table></div>'
 
-    # Component detail lines (Korean)
-    cpu_lines = [f'평균: {_fmt(cpu_avg)}% / 최고: {_fmt(cpu_max)}%']
-    if cpu_max > 90:
-        cpu_lines.append(f'⚠️ CPU 최대 {_fmt(cpu_max)}% — 부하가 매우 높았습니다')
-    elif cpu_max < 30:
-        cpu_lines.append(f'🟢 CPU 대부분 여유 (최고 {_fmt(cpu_max)}%)')
-    else:
-        cpu_lines.append(f'🟡 CPU 부하 범위: {_fmt(min(cpu_vals))}% ~ {_fmt(cpu_max)}%')
+    cpu_lines = [f'평균: {_fmt(cpu_avg)}% | 최고: {_fmt(cpu_max)}%']
+    if cpu_max > 90: cpu_lines.append(f'⚠️ CPU 최대 {_fmt(cpu_max)}% — 부하 매우 높음')
+    else: cpu_lines.append(f'CPU 부하 범위: {_fmt(min(cpu_vals))}% ~ {_fmt(cpu_max)}%')
 
-    gpu_lines = [f'평균: {_fmt(gpu_avg)}% / 최고: {_fmt(gpu_max)}%']
-    gpu_lines.append(f'온도: 평균 {_fmt(gt_avg)}°C / 최고 {_fmt(gt_max)}°C')
-    if gt_max > 85:
-        gpu_lines.append(f'🔥 GPU 온도가 {_fmt(gt_max)}°C까지 올라감 — 위험!')
-    elif gt_max > 75:
-        gpu_lines.append(f'⚠️ GPU 최고 온도 {_fmt(gt_max)}°C')
-    else:
-        gpu_lines.append(f'🟢 GPU 온도 안정적 (최고 {_fmt(gt_max)}°C)')
-    if gpu_max > 90:
-        gpu_lines.append(f'⚠️ GPU 거의 풀가동 ({_fmt(gpu_max)}%)')
+    gpu_lines = [f'평균: {_fmt(gpu_avg)}% | 최고: {_fmt(gpu_max)}%']
+    gpu_lines.append(f'온도: 평균 {_fmt(gt_avg)}°C | 최고 {_fmt(gt_max)}°C')
+    if gt_max > 85: gpu_lines.append(f'🔥 GPU 온도 {_fmt(gt_max)}°C — 위험!')
+    elif gt_max > 75: gpu_lines.append(f'⚠️ GPU 최고 온도 {_fmt(gt_max)}°C')
+    else: gpu_lines.append(f'🟢 GPU 온도 안정적 (최고 {_fmt(gt_max)}°C)')
+    if gpu_max > 90: gpu_lines.append(f'⚠️ GPU 거의 풀가동 ({_fmt(gpu_max)}%)')
 
     ram_lines = [f'평균: {_fmt(ram_avg)}%']
-    if ram_avg > 85:
-        ram_lines.append(f'⚠️ 메모리 부족')
-    elif ram_avg < 50:
-        ram_lines.append(f'🟢 메모리 여유 있음')
-    else:
-        ram_lines.append(f'🟡 메모리 적정')
+    if ram_avg > 85: ram_lines.append('⚠️ 메모리 부족')
+    elif ram_avg < 50: ram_lines.append('🟢 메모리 여유')
+    else: ram_lines.append('🟡 메모리 적정')
 
-    # Event log: success/info excluded
-    filtered_logs = [e for e in logs if e['type'] in ('warning', 'danger', 'idle')]
-    warn_count = sum(1 for e in filtered_logs if e['type'] == 'warning')
-    danger_count = sum(1 for e in filtered_logs if e['type'] == 'danger')
-    idle_count = sum(1 for e in filtered_logs if e['type'] == 'idle')
+    # Event log: success/info excluded, show detail
+    filtered = [e for e in logs if e['type'] in ('warning', 'danger', 'idle')]
+    wc = sum(1 for e in filtered if e['type'] == 'warning')
+    dc = sum(1 for e in filtered if e['type'] == 'danger')
+    ic = sum(1 for e in filtered if e['type'] == 'idle')
 
     event_rows = ''
-    for e in filtered_logs[-30:]:
+    for e in filtered[-30:]:
         cls = 'l-w' if e['type'] == 'warning' else 'l-d' if e['type'] == 'danger' else 'l-i'
-        event_rows += f'<tr class="{cls}"><td>{e["time"]}</td><td>{e["icon"]}</td><td>{e["msg"]}</td></tr>\n'
+        # detail message (cause analysis)
+        dt = e.get('detail', '') or ''
+        detail_html = ''
+        if dt:
+            detail_html = '<div class="evt-detail">' + dt.replace('\n', '<br>') + '</div>'
+        event_rows += f'<tr class="{cls}">'
+        event_rows += f'<td class="evt-t">{e["time"]}</td>'
+        event_rows += f'<td class="evt-i">{e["icon"]}</td>'
+        event_rows += f'<td class="evt-m">{e["msg"]}{detail_html}</td>'
+        event_rows += '</tr>\n'
 
-    # Bottleneck timeline
-    prev_bn = ''
-    bn_rows = ''
-    for r in rows:
-        bn = ''
-        if r['gpu'] > 90 and r['cpu'] < 60:
-            bn = 'GPU 병목'
-        elif r['cpu'] > 85 and r['gpu'] < 70:
-            bn = 'CPU 병목'
-        t_str = datetime.fromtimestamp(start_time + r['t']).strftime('%H:%M:%S') if start_time else f'{r["t"]:.0f}s'
-        if bn and bn != prev_bn:
-            icon = '🔴' if 'GPU' in bn else '🟡'
-            bn_rows += f'<tr><td>{t_str}</td><td>{icon} {bn}</td></tr>\n'
-        prev_bn = bn
-
-    # Anomalies
+    # Anomalies (keep this)
     anom_rows = ''
     for i in range(1, len(rows)):
         p, c = rows[i-1], rows[i]
@@ -113,31 +96,15 @@ def generate(raw_path, start_time, duration, summary, logs, top5_cpu, top5_ram, 
         if c['gt'] - p['gt'] > 5:
             anoms.append(f'온도 {p["gt"]:.0f}°C → {c["gt"]:.0f}°C (+{c["gt"]-p["gt"]:.0f}°C 상승)')
         if p['gpu'] > 80 and c['gpu'] < 20:
-            anoms.append(f'GPU 사용률 {p["gpu"]:.0f}% → {c["gpu"]:.0f}% (게임 종료 추정)')
+            anoms.append(f'GPU {p["gpu"]:.0f}% → {c["gpu"]:.0f}% (게임 종료 추정)')
         if anoms:
             t_str = datetime.fromtimestamp(start_time + c['t']).strftime('%H:%M:%S') if start_time else f'{c["t"]:.0f}s'
             for a in anoms:
                 anom_rows += f'<tr><td>{t_str}</td><td>{a}</td></tr>\n'
 
-    # Load zones
-    def zlabel(v): return '높음' if v > 70 else '보통' if v > 30 else '낮음'
-    zones, cur_zone, z_start = [], None, 0
-    for i, r in enumerate(rows):
-        z = zlabel(r['cpu'])
-        if z != cur_zone:
-            if cur_zone is not None: zones.append((cur_zone, z_start, i-1))
-            cur_zone, z_start = z, i
-    if cur_zone is not None: zones.append((cur_zone, z_start, len(rows)-1))
-
-    zone_rows = ''
-    for z, s, e in zones:
-        t1 = datetime.fromtimestamp(start_time + rows[s]['t']).strftime('%H:%M:%S') if start_time else f'{rows[s]["t"]:.0f}s'
-        t2 = datetime.fromtimestamp(start_time + rows[e]['t']).strftime('%H:%M:%S') if start_time else f'{rows[e]["t"]:.0f}s'
-        icons = {'높음': '🔴', '보통': '🟡', '낮음': '🟢'}
-        zone_rows += f'<tr><td>{icons.get(z, "")} {z}</td><td>{t1} ~ {t2}</td><td>{rows[e]["t"]-rows[s]["t"]:.0f}초</td></tr>\n'
-
     def top5_html(items, label):
-        if not items: return ''
+        if not items:
+            return ''
         h = f'<h2>Top 5 {label}</h2><table><tr><th>#</th><th>프로세스</th><th>점유율</th></tr>'
         for i, (n, v) in enumerate(items, 1):
             cls = ' class="warn"' if v > 50 else ''
@@ -174,15 +141,22 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
 .l-w td{{border-left:2px solid rgba(245,158,11,.3)}}
 .l-d td{{border-left:2px solid rgba(239,68,68,.3)}}
 .l-i td{{border-left:2px solid rgba(168,130,255,.3)}}
+.evt-t{{white-space:nowrap;width:55px;font-size:.65rem;opacity:.4;vertical-align:top;padding-top:6px}}
+.evt-i{{width:22px;font-size:.85rem;padding-top:6px}}
+.evt-m{{font-size:.78rem}}
+.evt-detail{{margin-top:4px;padding:6px 8px;border-radius:4px;background:rgba(255,255,255,.02);font-size:.7rem;line-height:1.5;opacity:.7;white-space:pre-wrap}}
+.l-d .evt-detail{{background:rgba(239,68,68,.04)}}
+.l-w .evt-detail{{background:rgba(245,158,11,.04)}}
+.l-i .evt-detail{{background:rgba(168,130,255,.04)}}
 </style></head>
 <body>
 <h1>PC Monitor - 상세 리포트</h1>
 <p class="sub">{duration}</p>
 
 <h2>1. 구성요소 상태</h2>
-{status_html('CPU', cpu_status, cpu_lines)}
-{status_html('GPU', gpu_status, gpu_lines)}
-{status_html('RAM', ram_status, ram_lines)}
+{st_html('CPU', cpu_st, cpu_lines)}
+{st_html('GPU', gpu_st, gpu_lines)}
+{st_html('RAM', ram_st, ram_lines)}
 
 <h2>2. 타임라인 차트</h2>
 <div class="chart-wr"><canvas id="chart"></canvas></div>
@@ -207,19 +181,15 @@ new Chart(document.getElementById('chart'), {{
 }});
 </script>
 
-{"<h2>3. 병목 타임라인</h2><table><tr><th>시간</th><th>이벤트</th></tr>" + bn_rows + "</table>" if bn_rows else ""}
-
-{"<h2>4. 부하 구간</h2><table><tr><th>구간</th><th>기간</th><th>지속시간</th></tr>" + zone_rows + "</table>" if zone_rows else ""}
-
-{"<h2>5. 이상치</h2><table><tr><th>시간</th><th>내용</th></tr>" + anom_rows + "</table>" if anom_rows else ""}
+{"<h2>3. 이상치</h2><table><tr><th>시간</th><th>내용</th></tr>" + anom_rows + "</table>" if anom_rows else ""}
 
 {top5_html(top5_cpu, 'CPU')}
 {top5_html(top5_ram, 'RAM')}
 {top5_html(top5_gpu, 'GPU')}
 
-<h2>6. 이벤트 로그</h2>
-<p style="font-size:.7rem;opacity:.4">⚠️ 경고 {warn_count}회 / 🔥 위험 {danger_count}회 / 💤 유휴 {idle_count}회</p>
-<table><tr><th>시간</th><th></th><th>내용</th></tr>
+<h2>4. 이벤트 로그</h2>
+<p style="font-size:.7rem;opacity:.4">⚠️ 경고 {wc}회 / 🔥 위험 {dc}회 / 💤 유휴 {ic}회</p>
+<table><tr><th style="width:55px">시간</th><th style="width:22px"></th><th>내용</th></tr>
 {event_rows if event_rows else '<tr><td colspan="3" style="text-align:center;opacity:.3">비정상 이벤트 없음</td></tr>'}
 </table>
 
