@@ -128,6 +128,21 @@ async def startup():
     asyncio.create_task(broadcast_loop())
 
 
+@app.on_event('shutdown')
+async def shutdown():
+    try:
+        collector.save_html()
+        logger.info('Session saved on shutdown')
+    except Exception as e:
+        try:
+            # Fallback: save anyway
+            p = collector.save_html()
+            if p: logger.info(f'Session saved: {p}')
+        except Exception:
+            pass
+        logger.error(f'Shutdown save failed: {e}')
+
+
 if __name__ == '__main__':
     import uvicorn
     webbrowser.open('http://localhost:8765')

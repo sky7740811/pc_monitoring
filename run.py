@@ -50,4 +50,9 @@ except:
     webbrowser.open(f'http://{HOST}:{PORT}')
     while True: time.sleep(1)
 
+try:
+    req = urllib.request.Request(f'http://{HOST}:{PORT}/stop', b'{}', {'Content-Type': 'application/json'})
+    urllib.request.urlopen(req, timeout=5)
+except: pass
+time.sleep(1)
 proc.terminate(); proc.wait()

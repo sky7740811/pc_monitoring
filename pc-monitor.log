@@ -41,3 +41,8 @@
 2026-06-20 11:11:39,880 [INFO] Collector primed
 2026-06-20 11:13:25,612 [DEBUG] Using proactor: IocpProactor
 2026-06-20 11:13:27,117 [INFO] Collector primed
+2026-06-20 11:14:28,716 [DEBUG] Using proactor: IocpProactor
+2026-06-20 11:14:30,168 [INFO] Collector primed
+2026-06-20 11:14:35,410 [INFO] Shutdown requested from dashboard
+2026-06-20 11:14:36,452 [INFO] Session saved: D:\cpu\pc-monitor\log\2026-06-20_111428.html
+2026-06-20 11:14:36,452 [INFO] Session saved: D:\cpu\pc-monitor\log\2026-06-20_111428.html
