@@ -431,9 +431,12 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
         except Exception:
             pass
 
-        # High-resource processes (for kill buttons)
+        # High-resource processes (for kill buttons, exclude system)
         try:
-            high = [p for p in data.get('processes', []) if p.get('cpu_percent', 0) > 10 or p.get('memory_mb', 0) > 500]
+            from monitor.events import SYSTEM_PROCS
+            high = [p for p in data.get('processes', [])
+                    if p['name'] not in SYSTEM_PROCS
+                    and (p.get('cpu_percent', 0) > 10 or p.get('memory_mb', 0) > 500)]
             data['high_procs'] = high
         except Exception:
             data['high_procs'] = []

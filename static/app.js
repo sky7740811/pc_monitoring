@@ -1,4 +1,7 @@
 const $ = id => document.getElementById(id);
+// Global error catcher to prevent white screen
+window.onerror = function(msg) { console.error(msg); return true; };
+
 const statusEl = $('status');
 const healthScore = $('healthScore');
 const scoreBox = $('scoreBox');
@@ -147,12 +150,16 @@ function update(d) {
    if (d.high_procs && d.high_procs.length > 0) {
      let hph = '<div style="font-size:.55rem;font-weight:600;letter-spacing:1px;opacity:.3;padding-bottom:4px">\u26A1 HIGH RESOURCE</div>';
      for (const p of d.high_procs) {
+       if (!p) continue;
        const pid = p.pid || 0;
        if (!pid) continue;
-       const dName = p.display_name || p.name;
-      hph += '<div class="hp-row" data-pid="' + pid + '">'
-            + '<span class="hp-name" title="' + p.name + '">' + dName + '</span>'
-            + '<span class="hp-stats">CPU ' + p.cpu_percent + '% / RAM ' + (p.memory_mb > 1024 ? (p.memory_mb / 1024).toFixed(1) + 'G' : p.memory_mb + 'M') + '</span>'
+       const cpu = Number(p.cpu_percent) || 0;
+       const mem = Number(p.memory_mb) || 0;
+       const dName = p.display_name || p.name || '?';
+       hph += '<div class="hp-row" data-pid="' + pid + '">'
+            + '<span class="hp-name" title="' + (p.name || '') + '">' + dName + '</span>'
+            + '<span class="hp-stats">CPU ' + cpu + '% / RAM '
+            + (mem > 1024 ? (mem / 1024).toFixed(1) + 'G' : mem + 'M') + '</span>'
             + '<button class="hp-kill" data-pid="' + pid + '">\u2715</button>'
             + '</div>';
      }

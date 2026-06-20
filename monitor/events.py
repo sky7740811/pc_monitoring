@@ -10,10 +10,17 @@ IDLE_MIN = 15
 IDLE_CPU = 10
 IDLE_RAM = 500
 
+# Critical system processes that should never be killed
+SYSTEM_PROCS = {'csrss.exe', 'wininit.exe', 'services.exe', 'lsass.exe',
+                'winlogon.exe', 'smss.exe', 'System', 'Registry',
+                'Memory Compression', 'Secure System', 'svchost.exe',
+                'dwm.exe', 'fontdrvhost.exe', 'spoolsv.exe',
+                'MsMpEng.exe', 'NisSrv.exe'}
+
 
 def _top_n(data, key, n=3):
-    """Return top N processes by `key` (normalized %)."""
-    procs = data.get('processes', [])
+    """Return top N processes by `key`, excluding critical system ones."""
+    procs = [p for p in data.get('processes', []) if p['name'] not in SYSTEM_PROCS]
     sorted_procs = sorted(procs, key=lambda p: p.get(key, 0), reverse=True)
     return [(p['name'], p.get(key, 0)) for p in sorted_procs if p.get(key, 0) > 0][:n]
 
