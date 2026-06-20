@@ -90,3 +90,7 @@
 2026-06-20 11:33:54,684 [INFO] Collector primed
 2026-06-20 11:33:54,685 [INFO] Session saved: D:\cpu\pc-monitor\log\2026-06-20_113353.html
 2026-06-20 11:33:54,685 [INFO] Session saved on shutdown
+2026-06-20 11:34:40,426 [DEBUG] Using proactor: IocpProactor
+2026-06-20 11:34:41,639 [INFO] Collector primed
+2026-06-20 11:34:41,641 [INFO] Session saved: D:\cpu\pc-monitor\log\2026-06-20_113440.html
+2026-06-20 11:34:41,641 [INFO] Session saved on shutdown

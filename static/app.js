@@ -17,7 +17,7 @@ const chartsOk = typeof Chart !== 'undefined';
 const logEvents = [];
 let sortCol = 'cpu', sortAsc = false;
 let procData = [];
-function makeChart(ctx, color) {
+function makeChart(ctx, color, tempColor) {
   if (!chartsOk) return null;
   const c = ctx.getContext('2d');
   const grad = c.createLinearGradient(0, 0, 0, 42);
@@ -25,24 +25,38 @@ function makeChart(ctx, color) {
   grad.addColorStop(1, color + '00');
   return new Chart(ctx, {
     type: 'line',
-    data: { labels: Array(N).fill(''), datasets: [{ data: Array(N).fill(0), borderColor: color, backgroundColor: grad, borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0 }] },
+    data: {
+      labels: Array(N).fill(''),
+      datasets: [
+        { data: Array(N).fill(0), borderColor: color, backgroundColor: grad, borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0, yAxisID: 'y' },
+        { data: Array(N).fill(0), borderColor: tempColor || '#ef4444', borderWidth: 1, fill: false, tension: 0.3, pointRadius: 0, yAxisID: 'y1', borderDash: [3, 3] },
+      ],
+    },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
-      scales: { x: { display: false }, y: { min: 0, max: 100, display: false } },
-      plugins: { legend: { display: false }, tooltip: { enabled: true, mode: 'nearest', intersect: false, callbacks: { label: ctx => ctx.parsed.y.toFixed(1) + '%' } } },
+      scales: {
+        x: { display: false },
+        y: { min: 0, max: 100, display: false },
+        y1: { min: 0, max: 100, display: false, position: 'right' },
+      },
+      plugins: { legend: { display: false }, tooltip: { enabled: true, mode: 'nearest', intersect: false, callbacks: { label: ctx => ctx.parsed.y.toFixed(1) + (ctx.dataset.yAxisID === 'y1' ? '\u00B0C' : '%') } } },
       interaction: { intersect: false, mode: 'nearest' },
     },
   });
 }
 
-const cpuChart = makeChart($('cpuChart'), '#00d4ff');
-const gpuChart = makeChart($('gpuChart'), '#ff6b35');
+const cpuChart = makeChart($('cpuChart'), '#00d4ff', '#ff4444');
+const gpuChart = makeChart($('gpuChart'), '#ff6b35', '#ff4444');
 const ramChart = makeChart($('ramChart'), '#7c3aed');
 
-function pushChart(chart, val) {
+function pushChart(chart, val, temp) {
   if (!chart) return;
   chart.data.datasets[0].data.push(Math.min(100, Math.max(0, val)));
   chart.data.datasets[0].data.shift();
+  if (temp !== undefined && chart.data.datasets.length > 1) {
+    chart.data.datasets[1].data.push(Math.min(100, Math.max(0, temp)));
+    chart.data.datasets[1].data.shift();
+  }
   chart.update('none');
 }
 
@@ -95,8 +109,8 @@ function update(d) {
   diskRead.textContent = disk.read_speed.toFixed(1);
   diskWrite.textContent = disk.write_speed.toFixed(1);
 
-  pushChart(cpuChart, cpu.percent);
-  pushChart(gpuChart, gpu.percent);
+  pushChart(cpuChart, cpu.percent, cpu.temp);
+  pushChart(gpuChart, gpu.percent, gpu.temp);
   pushChart(ramChart, mem.percent);
 
   healthScore.textContent = diag.health_score;
