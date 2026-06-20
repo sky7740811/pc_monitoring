@@ -1,4 +1,6 @@
 __pycache__/
 *.pyc
+*.pyo
 pc-monitor.log
 log/
+librehw/
