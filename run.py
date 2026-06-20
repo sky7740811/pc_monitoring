@@ -1,6 +1,12 @@
 import ctypes, os, subprocess, sys, time, urllib.request
 
-# Auto-elevate to admin
+# Hide console immediately
+try:
+    h = ctypes.windll.kernel32.GetConsoleWindow()
+    if h: ctypes.windll.user32.ShowWindow(h, 0)
+except: pass
+
+# Auto-elevate to admin (silent)
 try:
     if not ctypes.windll.shell32.IsUserAnAdmin():
         script = os.path.abspath(__file__)
@@ -12,8 +18,9 @@ except: pass
 
 HOST, PORT = '127.0.0.1', 8765
 ROOT = os.path.dirname(os.path.abspath(__file__))
-HW = ctypes.windll.user32.ShowWindow
-GC = ctypes.windll.kernel32.GetConsoleWindow
+
+# Disable WebView2 GPU (reduces msedgewebview2 processes)
+os.environ['WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS'] = '--disable-gpu'
 
 def free_port():
     try:
@@ -31,10 +38,6 @@ def wait_for_server(t=20):
         except: time.sleep(0.5)
     return False
 
-# Show startup messages
-hcon = GC()
-print(' Starting server...', flush=True)
-
 free_port()
 py = sys.executable.replace('pythonw.exe', 'python.exe')
 proc = subprocess.Popen(
@@ -42,14 +45,8 @@ proc = subprocess.Popen(
     cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 if not wait_for_server():
-    print(' FAILED: Server could not start', flush=True)
-    hw = GC()
-    if hw: HW(hw, 5)  # restore console
-    input(' Press Enter to exit...')
+    ctypes.windll.user32.MessageBoxW(0, 'Server did not start.\nTry running PC Monitor.bat first.', 'PC Monitor Error', 0)
     proc.terminate(); sys.exit(1)
-
-print(' Server ready! Opening window...', flush=True)
-if hcon: HW(hcon, 0)  # hide console
 
 try:
     import webview
