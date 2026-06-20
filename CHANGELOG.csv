@@ -19,3 +19,11 @@
 2026-06-20,PERF: CPU temp cache 10s (was: PowerShell every 1s),monitor/cpu.py
 2026-06-20,PERF: process list cache every 4 ticks (was: every 700ms),monitor/collector.py
 2026-06-20,Added .gitignore + GitHub repo + v1.0 tag,.gitignore
+2026-06-20,FEAT: process kill endpoint /kill/{pid},main.py
+2026-06-20,FEAT: NDJSON raw logging in log/raw/,monitor/collector.py
+2026-06-20,FEAT: detailed report HTML with chart.js,monitor/reporter.py
+2026-06-20,FEAT: launcher.exe with custom icon,launcher.cs,launcher.exe,pc-monitor.ico
+2026-06-20,FIX: report sections in Korean, English removed,monitor/reporter.py
+2026-06-20,FIX: event log filters out success events,monitor/reporter.py
+2026-06-20,FIX: chart label 'Temp' -> '온도',monitor/reporter.py
+2026-06-20,ADD: AGENTS.md (behavior rules),AGENTS.md
