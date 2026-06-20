@@ -214,6 +214,9 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
                             'gpu_sm': gp['gpu_sm'],
                             'gpu_mem': gp['gpu_mem'],
                         })
+                # Cap total at 10 (CPU + GPU combined)
+                self._proc_cache.sort(key=lambda p: p.get('cpu_percent', 0), reverse=True)
+                self._proc_cache = self._proc_cache[:10]
             except Exception:
                 pass
         processes = self._proc_cache
