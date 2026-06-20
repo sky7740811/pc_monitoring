@@ -62,18 +62,18 @@ def get_gpu_processes():
             if not line or line.startswith('#'):
                 continue
             parts = line.split()
-            if len(parts) < 9:
+            if len(parts) < 10:
                 continue
             try:
                 pid = int(parts[1])
                 sm = parts[3]
                 mem = parts[4]
-                name = parts[8]
-                if name == 'command':
+                name = ' '.join(parts[9:]).strip() if len(parts) > 10 else parts[9]
+                if name == 'command' or name == '-':
                     continue
                 sm_val = int(sm) if sm != '-' else 0
                 mem_val = int(mem) if mem != '-' else 0
-                if name != '-' and (sm_val > 0 or mem_val > 0):
+                if sm_val > 0 or mem_val > 0:
                     procs[name] = {'name': name, 'gpu_sm': sm_val, 'gpu_mem': mem_val}
             except (ValueError, IndexError):
                 continue
