@@ -159,7 +159,7 @@ function update(d) {
        hph += '<div class="hp-row" data-pid="' + pid + '">'
             + '<span class="hp-name" title="' + (p.name || '') + '">' + dName + '</span>'
             + '<span class="hp-stats">CPU ' + cpu + '% / RAM '
-            + (mem > 1024 ? (mem / 1024).toFixed(1) + 'G' : mem + 'M') + '</span>'
+            + (mem > 1024 ? (mem / 1024).toFixed(1) + 'G' : mem.toFixed(1) + 'M') + '</span>'
             + '<button class="hp-kill" data-pid="' + pid + '">\u2715</button>'
             + '</div>';
      }
@@ -230,7 +230,7 @@ function renderProcs() {
   for (const p of mergedArr) {
     const cw = Math.min(100, p.cpu_percent);
     const mw = Math.min(100, p.memory_mb / 512 * 100);
-    const ms = p.memory_mb > 1024 ? (p.memory_mb / 1024).toFixed(1) + 'G' : p.memory_mb + 'M';
+    const ms = p.memory_mb > 1024 ? (p.memory_mb / 1024).toFixed(1) + 'G' : p.memory_mb.toFixed(1) + 'M';
     const gw = Math.min(100, p.gpu_sm);
     const cnt = p.count > 1 ? ' (' + p.count + ')' : '';
     const displayName = p.display_name + cnt;
