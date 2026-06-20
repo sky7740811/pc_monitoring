@@ -1,0 +1,21 @@
+2026-06-20,Projet crée - modules de monitoring (CPU/GPU/RAM/Disk/Net),monitor/
+2026-06-20,Added diagnostic engine (bottleneck detection, health score),monitor/diagnostic.py
+2026-06-20,Added WebSocket broadcast + dashboard HTML/CSS/JS,main.py,static/
+2026-06-20,Added pywebview native window support,run.py
+2026-06-20,CORRECT: async loop crash handling (try/except),main.py
+2026-06-20,CORRECT: psutil process_iter exception propagation,monitor/processes.py
+2026-06-20,CORRECT: JS ping timer accumulation,static/app.js
+2026-06-20,CORRECT: process CPU normalization (div by core count),monitor/processes.py
+2026-06-20,Added events/log system,monitor/events.py,monitor/collector.py
+2026-06-20,Added log tab UI + tab switching,static/index.html,static/style.css,static/app.js
+2026-06-20,Added idle process detection (League,Steam,etc),monitor/events.py
+2026-06-20,Added session HTML export (/stop),monitor/collector.py
+2026-06-20,CORRECT: panel display:none hiding dashboard,static/style.css,static/app.js
+2026-06-20,CORRECT: Chart.js CDN failure breaks entire JS,static/app.js
+2026-06-20,CORRECT: process cpu_percent not primed (first data all zeros),monitor/collector.py
+2026-06-20,CORRECT: inline style="display:none" overrides JS toggle,static/index.html
+2026-06-20,Rollback: removed tab/log feature (v1.0 -> v1.1),static/
+2026-06-20,PERF: collection interval 1s -> 0.3s,main.py
+2026-06-20,PERF: CPU temp cache 10s (was: PowerShell every 1s),monitor/cpu.py
+2026-06-20,PERF: process list cache every 4 ticks (was: every 700ms),monitor/collector.py
+2026-06-20,Added .gitignore + GitHub repo + v1.0 tag,.gitignore

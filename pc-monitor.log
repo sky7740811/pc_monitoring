@@ -25,3 +25,5 @@
 2026-06-20 10:55:03,950 [INFO] Collector primed
 2026-06-20 10:55:34,338 [DEBUG] Using proactor: IocpProactor
 2026-06-20 10:55:35,778 [INFO] Collector primed
+2026-06-20 10:56:26,161 [DEBUG] Using proactor: IocpProactor
+2026-06-20 10:56:27,545 [INFO] Collector primed

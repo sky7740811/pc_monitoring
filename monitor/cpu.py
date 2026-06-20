@@ -37,6 +37,7 @@ def get_cpu_info():
 
 
 def _get_cpu_temp():
+    # Method 1: WMI ACPI thermal zones
     try:
         result = subprocess.run(
             ['powershell', '-Command',
@@ -59,4 +60,14 @@ def _get_cpu_temp():
                 return max(temps)
     except Exception:
         pass
+
+    # Method 2: LibreHardwareMonitor (AMD Ryzen, etc.)
+    try:
+        from monitor.sensors import get_cpu_temp
+        t = get_cpu_temp()
+        if t is not None:
+            return t
+    except Exception:
+        pass
+
     return None
