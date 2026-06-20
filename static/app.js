@@ -149,8 +149,9 @@ function update(d) {
      for (const p of d.high_procs) {
        const pid = p.pid || 0;
        if (!pid) continue;
-       hph += '<div class="hp-row" data-pid="' + pid + '">'
-            + '<span class="hp-name">' + p.name + '</span>'
+       const dName = p.display_name || p.name;
+      hph += '<div class="hp-row" data-pid="' + pid + '">'
+            + '<span class="hp-name" title="' + p.name + '">' + dName + '</span>'
             + '<span class="hp-stats">CPU ' + p.cpu_percent + '% / RAM ' + (p.memory_mb > 1024 ? (p.memory_mb / 1024).toFixed(1) + 'G' : p.memory_mb + 'M') + '</span>'
             + '<button class="hp-kill" data-pid="' + pid + '">\u2715</button>'
             + '</div>';
@@ -209,8 +210,9 @@ function renderProcs() {
     const mw = Math.min(100, p.memory_mb / 512 * 100);
     const ms = p.memory_mb > 1024 ? (p.memory_mb / 1024).toFixed(1) + 'G' : p.memory_mb + 'M';
     const gw = Number(p.gpu_sm) || 0;
+    const displayName = p.display_name || p.name;
     ph += '<div class="proc-row" style="grid-template-columns:1fr 55px 55px 50px">'
-       + '<span class="proc-name" title="' + p.name + '">' + p.name + '</span>'
+       + '<span class="proc-name" title="' + p.name + '">' + displayName + '</span>'
        + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar cpu" style="width:' + cw + '%"></div></div><span class="proc-stat">' + p.cpu_percent + '%</span></div>'
        + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar mem" style="width:' + mw + '%"></div></div><span class="proc-stat">' + ms + '</span></div>'
        + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar" style="background:#ff6b35;width:' + gw + '%"></div></div><span class="proc-stat">' + gw + '%</span></div>'
