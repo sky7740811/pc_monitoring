@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import time
@@ -29,6 +30,8 @@ class SystemCollector:
         self._proc_history = {}  # {name: {cpu: [], ram: [], gpu: []}}
         self._gpu_context = set()  # process names with GPU context
         self.total_ram_mb = 0
+        self._ndjson_path = None
+        self._ndjson_file = None
         self.stats = {
             'cpu_pct': [], 'gpu_pct': [], 'gpu_temp': [],
             'cpu_temp': [], 'vram_pct': [], 'mem_pct': [],
@@ -44,6 +47,15 @@ class SystemCollector:
         self.start_time = time.time()
         self.total_ram_mb = round(psutil.virtual_memory().total / (1024 * 1024), 0)
         self._log_event('info', '🚀', '세션 시작', 'PC Monitor monitoring session started.')
+        # Open NDJSON raw log
+        try:
+            log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'log')
+            os.makedirs(log_dir, exist_ok=True)
+            ts = datetime.now().strftime('%Y-%m-%d_%H%M%S')
+            self._ndjson_path = os.path.join(log_dir, f'raw_{ts}.ndjson')
+            self._ndjson_file = open(self._ndjson_path, 'w', encoding='utf-8')
+        except Exception as e:
+            logger.warning(f'NDJSON init failed: {e}')
         # Prime process CPU + populate cache
         try:
             self._proc_cache = get_top_processes(n=8)
@@ -257,6 +269,28 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
         logger.info(f'Session saved: {fpath}')
         return fpath
 
+    def generate_report(self):
+        """Generate detailed HTML report from NDJSON + close log."""
+        if self._ndjson_file:
+            try:
+                self._ndjson_file.close()
+            except Exception:
+                pass
+        try:
+            from monitor.reporter import generate
+            s = self.get_summary()
+            top5_cpu = self.get_process_top5('cpu')
+            top5_ram = self.get_process_top5('ram')
+            top5_gpu = self.get_process_top5('gpu')
+            path = generate(self._ndjson_path, self.start_time, s['duration'],
+                          s, self.log_buffer, top5_cpu, top5_ram, top5_gpu)
+            if path:
+                logger.info(f'Detailed report saved: {path}')
+            return path
+        except Exception as e:
+            logger.error(f'Report generation failed: {e}')
+            return None
+
     def collect(self):
         now = time.time()
         dt = now - self.prev_time if self.prev_time else 1.0
@@ -396,5 +430,29 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
             self._update_stats(data)
         except Exception:
             pass
+
+        # High-resource processes (for kill buttons)
+        try:
+            high = [p for p in data.get('processes', []) if p.get('cpu_percent', 0) > 10 or p.get('memory_mb', 0) > 500]
+            data['high_procs'] = high
+        except Exception:
+            data['high_procs'] = []
+
+        # NDJSON raw log
+        if self._ndjson_file and not self._ndjson_file.closed:
+            try:
+                t = round(time.time() - self.start_time, 1) if self.start_time else 0
+                gpu_info = data.get('gpu', {})
+                row = {
+                    't': t, 'cpu': data['cpu']['percent'],
+                    'gpu': gpu_info.get('percent', 0), 'gt': gpu_info.get('temp', 0),
+                    'ram': data['memory']['percent'], 'vp': gpu_info.get('vram_percent', 0),
+                    'alerts': len(data.get('log_events', [])),
+                }
+                line = json.dumps(row, ensure_ascii=False) + '\n'
+                self._ndjson_file.write(line)
+                self._ndjson_file.flush()
+            except Exception as e:
+                logger.warning(f'NDJSON write: {e}')
 
         return data

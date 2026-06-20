@@ -134,9 +134,43 @@ function update(d) {
       }
     }
   }
-  diagList.innerHTML = dh;
+   diagList.innerHTML = dh;
 
-  procData = procs;
+   // High resource processes (kill buttons)
+   let hpDiv = document.getElementById('highProcList');
+   if (!hpDiv) {
+     hpDiv = document.createElement('div');
+     hpDiv.id = 'highProcList';
+     hpDiv.style.cssText = 'padding:0 12px 8px;display:flex;flex-direction:column;gap:4px';
+     document.getElementById('diagSection').appendChild(hpDiv);
+   }
+   if (d.high_procs && d.high_procs.length > 0) {
+     let hph = '<div style="font-size:.55rem;font-weight:600;letter-spacing:1px;opacity:.3;padding-bottom:4px">\u26A1 HIGH RESOURCE</div>';
+     for (const p of d.high_procs) {
+       const pid = p.pid || 0;
+       if (!pid) continue;
+       hph += '<div class="hp-row" data-pid="' + pid + '">'
+            + '<span class="hp-name">' + p.name + '</span>'
+            + '<span class="hp-stats">CPU ' + p.cpu_percent + '% / RAM ' + (p.memory_mb > 1024 ? (p.memory_mb / 1024).toFixed(1) + 'G' : p.memory_mb + 'M') + '</span>'
+            + '<button class="hp-kill" data-pid="' + pid + '">\u2715</button>'
+            + '</div>';
+     }
+     hpDiv.innerHTML = hph;
+     hpDiv.style.display = '';
+     // Kill handlers
+     hpDiv.querySelectorAll('.hp-kill').forEach(btn => {
+       btn.onclick = () => {
+         const pid = btn.dataset.pid;
+         btn.textContent = '...';
+         btn.disabled = true;
+         fetch('/kill/' + pid, { method: 'POST' }).catch(() => {});
+       };
+     });
+   } else {
+     hpDiv.style.display = 'none';
+   }
+
+   procData = procs;
   renderProcs();
 
    // Log - accumulate abnormal events

@@ -60,6 +60,22 @@ async def health():
     return {'status': 'ok'}
 
 
+@app.post('/kill/{pid}')
+async def kill_process(pid: int):
+    try:
+        proc = psutil.Process(pid)
+        name = proc.name()
+        proc.terminate()
+        logger.info(f'Killed: {name} (pid={pid})')
+        return {'ok': True, 'name': name}
+    except psutil.NoSuchProcess:
+        return {'ok': False, 'error': 'not found'}
+    except psutil.AccessDenied:
+        return {'ok': False, 'error': 'access denied'}
+    except Exception as e:
+        return {'ok': False, 'error': str(e)}
+
+
 @app.post('/stop')
 async def stop():
     logger.info('Shutdown requested from dashboard')
@@ -170,10 +186,13 @@ async def _shutdown():
         logger.error(f'Shutdown summary error: {e}')
 
     try:
-        path = collector.save_html()
-        logger.info(f'Session saved: {path}')
+        collector.save_html()
     except Exception as e:
         logger.error(f'Save failed: {e}')
+    try:
+        collector.generate_report()
+    except Exception as e:
+        logger.error(f'Report failed: {e}')
     os._exit(0)
 
 

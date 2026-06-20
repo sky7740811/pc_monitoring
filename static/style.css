@@ -110,6 +110,21 @@ header{
 
 .log-row{cursor:pointer}
 
+/* high resource process kill bar */
+.hp-row{
+  display:grid;grid-template-columns:1fr 100px 28px;align-items:center;gap:6px;
+  padding:5px 8px;border-radius:6px;font-size:.7rem;
+  background:rgba(255,255,255,.015);border:1px solid rgba(239,68,68,.1)
+}
+.hp-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:#b0b8c4}
+.hp-stats{text-align:right;font-variant-numeric:tabular-nums;opacity:.5}
+.hp-kill{
+  width:26px;height:26px;border-radius:5px;border:1px solid rgba(239,68,68,.2);
+  background:rgba(239,68,68,.08);color:#ef4444;cursor:pointer;
+  font-size:.7rem;display:flex;align-items:center;justify-content:center;transition:all .2s
+}
+.hp-kill:hover{background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.4)}
+
 .log-section{padding:0 12px 20px}
 #logList{display:flex;flex-direction:column;gap:2px;max-height:160px;overflow-y:auto}
 .log-row{
