@@ -50,9 +50,46 @@ def generate(raw_path, start_time, duration, summary, logs, top5_cpu, top5_ram, 
         l = ''.join(f'<tr><td>{x}</td></tr>' for x in lines)
         return f'<div class="comp {st}"><div class="comp-h">{ico} {label}</div><table class="comp-d">{l}</table></div>'
 
+    # Bottleneck frequency analysis from NDJSON rows
+    gpu_bn = 0
+    cpu_bn = 0
+    gpu_bn_streaks = []  # track consecutive bottleneck lengths
+    cpu_bn_streaks = []
+    streak = 0
+    streak_type = None
+    for r in rows:
+        if r['gpu'] > 90 and r['cpu'] < 60:
+            gpu_bn += 1
+            if streak_type == 'gpu': streak += 1
+            else:
+                if streak_type == 'cpu' and streak > 0: cpu_bn_streaks.append(streak)
+                streak = 1
+                streak_type = 'gpu'
+        elif r['cpu'] > 85 and r['gpu'] < 70:
+            cpu_bn += 1
+            if streak_type == 'cpu': streak += 1
+            else:
+                if streak_type == 'gpu' and streak > 0: gpu_bn_streaks.append(streak)
+                streak = 1
+                streak_type = 'cpu'
+        else:
+            if streak_type == 'gpu' and streak > 0: gpu_bn_streaks.append(streak)
+            if streak_type == 'cpu' and streak > 0: cpu_bn_streaks.append(streak)
+            streak = 0
+            streak_type = None
+    if streak_type == 'gpu' and streak > 0: gpu_bn_streaks.append(streak)
+    if streak_type == 'cpu' and streak > 0: cpu_bn_streaks.append(streak)
+
+    total = len(rows)
     cpu_lines = [f'평균: {_fmt(cpu_avg)}% | 최고: {_fmt(cpu_max)}%']
     if cpu_max > 90: cpu_lines.append(f'⚠️ CPU 최대 {_fmt(cpu_max)}% — 부하 매우 높음')
     else: cpu_lines.append(f'CPU 부하 범위: {_fmt(min(cpu_vals))}% ~ {_fmt(cpu_max)}%')
+    if cpu_bn > 0 and total > 0:
+        cpu_bn_pct = cpu_bn / total * 100
+        avg_cpu_dur = stat.mean(cpu_bn_streaks) * (rows[1]['t'] - rows[0]['t']) if cpu_bn_streaks else 0
+        cpu_lines.append(f'⚙️ CPU 병목 {cpu_bn}회 ({cpu_bn_pct:.0f}%) · 평균 지속 {avg_cpu_dur:.0f}초')
+    else:
+        cpu_lines.append(f'🟢 CPU 병목 없음')
 
     gpu_lines = [f'평균: {_fmt(gpu_avg)}% | 최고: {_fmt(gpu_max)}%']
     gpu_lines.append(f'온도: 평균 {_fmt(gt_avg)}°C | 최고 {_fmt(gt_max)}°C')
@@ -60,6 +97,13 @@ def generate(raw_path, start_time, duration, summary, logs, top5_cpu, top5_ram, 
     elif gt_max > 75: gpu_lines.append(f'⚠️ GPU 최고 온도 {_fmt(gt_max)}°C')
     else: gpu_lines.append(f'🟢 GPU 온도 안정적 (최고 {_fmt(gt_max)}°C)')
     if gpu_max > 90: gpu_lines.append(f'⚠️ GPU 거의 풀가동 ({_fmt(gpu_max)}%)')
+    if gpu_bn > 0 and total > 0:
+        gpu_bn_pct = gpu_bn / total * 100
+        avg_gpu_dur = stat.mean(gpu_bn_streaks) * (rows[1]['t'] - rows[0]['t']) if gpu_bn_streaks else 0
+        max_gpu_streak = max(gpu_bn_streaks) * (rows[1]['t'] - rows[0]['t']) if gpu_bn_streaks else 0
+        gpu_lines.append(f'🎮 GPU 병목 {gpu_bn}회 ({gpu_bn_pct:.0f}%) · 평균 {avg_gpu_dur:.0f}초 · 최장 {max_gpu_streak:.0f}초')
+    else:
+        gpu_lines.append(f'🟢 GPU 병목 없음')
 
     ram_lines = [f'평균: {_fmt(ram_avg)}%']
     if ram_avg > 85: ram_lines.append('⚠️ 메모리 부족')

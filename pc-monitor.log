@@ -194,3 +194,7 @@
 2026-06-20 13:55:41,246 [INFO] Collector primed
 2026-06-20 13:55:41,261 [INFO] Session saved: D:\cpu\pc-monitor\log\2026-06-20_135538.html
 2026-06-20 13:55:41,261 [INFO] Session saved on shutdown
+2026-06-20 13:57:05,779 [INFO] Shutdown requested from dashboard
+2026-06-20 13:57:06,085 [ERROR] Shutdown summary error: name 'ctypes' is not defined
+2026-06-20 13:57:06,086 [INFO] Session saved: D:\cpu\pc-monitor\log\2026-06-20_135320.html
+2026-06-20 13:57:06,112 [INFO] Detailed report saved: D:\cpu\pc-monitor\log\report_2026-06-20_135320.html
