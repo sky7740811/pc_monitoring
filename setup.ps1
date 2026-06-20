@@ -1,13 +1,14 @@
-$p = "$PSScriptRoot"
+$p = $PSScriptRoot
 $ico = "$p\pc-monitor.ico"
-$target = "$env:USERPROFILE\Desktop\PC Monitor.lnk"
 $bat = "$p\PC Monitor.bat"
+$desktop = [Environment]::GetFolderPath("Desktop")
+$target = "$desktop\PC Monitor.lnk"
 
+if (Test-Path $target) { Remove-Item $target -Force }
 $ws = New-Object -ComObject WScript.Shell
-$lnk = $ws.CreateShortcut($target)
-$lnk.TargetPath = $bat
-$lnk.Arguments = ""
-$lnk.WorkingDirectory = "$p"
-if (Test-Path $ico) { $lnk.IconLocation = "$ico, 0" }
-$lnk.Save()
-Write-Host "OK: Desktop shortcut -> PC Monitor.bat"
+$s = $ws.CreateShortcut($target)
+$s.TargetPath = $bat
+$s.WorkingDirectory = $p
+$s.IconLocation = "$ico, 0"
+$s.Save()
+Write-Host "PC Monitor shortcut created on desktop"
