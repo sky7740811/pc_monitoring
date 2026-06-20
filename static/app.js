@@ -150,7 +150,7 @@ function renderProcs() {
     let va, vb;
     if (sortCol === 'cpu') { va = a.cpu_percent; vb = b.cpu_percent; }
     else if (sortCol === 'ram') { va = a.memory_mb; vb = b.memory_mb; }
-    else { va = a.gpu_sm || 0; vb = b.gpu_sm || 0; }
+    else { va = Number(a.gpu_sm) || 0; vb = Number(b.gpu_sm) || 0; }
     return sortAsc ? va - vb : vb - va;
   });
   let ph = '';
@@ -158,7 +158,7 @@ function renderProcs() {
     const cw = Math.min(100, p.cpu_percent);
     const mw = Math.min(100, p.memory_mb / 512 * 100);
     const ms = p.memory_mb > 1024 ? (p.memory_mb / 1024).toFixed(1) + 'G' : p.memory_mb + 'M';
-    const gw = p.gpu_sm || 0;
+    const gw = Number(p.gpu_sm) || 0;
     ph += '<div class="proc-row" style="grid-template-columns:1fr 55px 55px 50px">'
        + '<span class="proc-name" title="' + p.name + '">' + p.name + '</span>'
        + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar cpu" style="width:' + cw + '%"></div></div><span class="proc-stat">' + p.cpu_percent + '%</span></div>'
@@ -167,6 +167,22 @@ function renderProcs() {
        + '</div>';
   }
   procList.innerHTML = ph;
+  updateSortIcons();
+}
+
+function updateSortIcons() {
+  const colors = { cpu: '#00d4ff', ram: '#7c3aed', gpu: '#ff6b35' };
+  document.querySelectorAll('.sort-hdr').forEach(h => {
+    const col = h.dataset.sort;
+    const ico = h.querySelector('.sort-ico');
+    if (col === sortCol) {
+      h.style.color = colors[col] || '#e8ecf4';
+      ico.textContent = sortAsc ? ' \u25B2' : ' \u25BC';
+    } else {
+      h.style.color = '';
+      ico.textContent = '';
+    }
+  });
 }
 
 document.querySelectorAll('.sort-hdr').forEach(el => {
@@ -174,8 +190,6 @@ document.querySelectorAll('.sort-hdr').forEach(el => {
     const col = el.dataset.sort;
     if (sortCol === col) sortAsc = !sortAsc;
     else { sortCol = col; sortAsc = false; }
-    document.querySelectorAll('.sort-hdr').forEach(h => h.style.color = '');
-    el.style.color = sortCol === 'cpu' ? '#00d4ff' : sortCol === 'ram' ? '#7c3aed' : '#ff6b35';
     renderProcs();
   };
 });
