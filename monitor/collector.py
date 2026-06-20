@@ -100,18 +100,29 @@ class SystemCollector:
         }
 
     def get_process_top5(self, metric='cpu'):
+        """Retourne top 5 processus par part de consommation (% du total).
+        La somme des parts (top5 + others) = 100%."""
         names = {}
         for name, h in self._proc_history.items():
             if metric == 'gpu' and name not in self._gpu_context:
                 continue
             vals = [v for v in h[metric] if v > 0]
             if vals:
-                avg = round(sum(vals) / len(vals), 1)
-                names[name] = avg
+                names[name] = sum(vals)
             else:
                 names[name] = 0
-        sorted_names = sorted(names.items(), key=lambda x: x[1], reverse=True)
-        return sorted_names[:5]
+        total = sum(names.values())
+        if total == 0:
+            return []
+        # Convertir en % et trier
+        shares = [(n, round(v / total * 100, 1)) for n, v in names.items() if v > 0]
+        shares.sort(key=lambda x: x[1], reverse=True)
+        top = shares[:5]
+        # Ajouter "Others" (arrondir pour que total = 100.0)
+        other_sum = 100.0 - sum(s[1] for s in shares[:5])
+        if other_sum > 0.05:
+            top.append(('Others', round(other_sum, 1)))
+        return top
 
     def save_html(self):
         summary = self.get_summary()
@@ -172,27 +183,25 @@ class SystemCollector:
 
         diag_html = '<br>'.join(diag_lines)
 
-        # Top5 tables
-        def top5_table(items, unit='%', high_thresh=50, force=False):
+        # Top5 tables (toutes les valeurs sont déjà en %)
+        def top5_table(items, high_thresh=50, force=False):
             if not items:
                 return ''
             if not force and items[0][1] == 0:
                 return ''
             rows_t5 = ''
             for i, (n, v) in enumerate(items, 1):
-                if unit == 'MB':
-                    pct = round(v / self.total_ram_mb * 100, 1) if self.total_ram_mb > 0 else 0
-                    val_str = f'{pct}%'
-                else:
-                    val_str = f'{v}{unit}'
                 high = ' style="color:#ef4444"' if v > high_thresh else ''
-                rows_t5 += f'<tr><td>{i}</td><td>{n}</td><td{high}>{val_str}</td></tr>'
+                rows_t5 += f'<tr><td>{i}</td><td>{n}</td><td{high}>{v}%</td></tr>'
+            # Total row
+            total_pct = sum(v for _, v in items)
+            rows_t5 += f'<tr style="opacity:.4"><td></td><td>Total</td><td>{round(total_pct,1)}%</td></tr>'
             return f'''<table class="summary">
-<tr><th>#</th><th>Process</th><th>Usage</th></tr>
+<tr><th>#</th><th>Process</th><th>Share</th></tr>
 {rows_t5}</table>'''
 
-        def top5_section(label, items, unit='%', thresh=50, force=False):
-            tbl = top5_table(items, unit, thresh, force)
+        def top5_section(label, items, thresh=50, force=False):
+            tbl = top5_table(items, thresh, force)
             if not tbl:
                 return ''
             return f'<h2>Top 5 {label}</h2>{tbl}'
@@ -232,9 +241,9 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
 <tr><td>Alerts</td><td>⚠️ {s["warnings"]} / 🔥 {s["dangers"]}</td></tr>
 </table>
 
-{top5_section('CPU', top5_cpu, '%', 50)}
-{top5_section('RAM', top5_ram, 'MB', 2048)}
-{top5_section('GPU', top5_gpu, '%', 50, True)}
+{top5_section('CPU', top5_cpu, 50)}
+{top5_section('RAM', top5_ram, 50)}
+{top5_section('GPU', top5_gpu, 50, True)}
 
 <h2>Event Log ({event_count} entries)</h2>
 <table>

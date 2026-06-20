@@ -139,6 +139,16 @@ async def _shutdown():
 
         # --- Build message ---
         status = '🟢 GOOD' if w == 0 and d == 0 else '🟡 WARNING' if d == 0 else '🔴 DANGER'
+        def fmt_top5(title, items, thresh=50):
+            if not items:
+                return ''
+            out = f'\n{title}:\n'
+            for i, (n, v) in enumerate(items, 1):
+                flag = ' ◀ 높음' if v > thresh else ''
+                out += f' {i}. {n}: {v}%{flag}\n'
+            out += f'    Total: {round(sum(v for _,v in items), 1)}%\n'
+            return out
+
         msg = (
             f'📊 PC Monitor Session Report\n'
             f'⏱ {s["duration"]}  |  {status}\n'
@@ -150,25 +160,10 @@ async def _shutdown():
             f'온도:  GPU max {s["gpu_temp_max"]}°C\n'
             f'RAM:   avg {s["mem_avg"]}%\n'
             f'{"─"*50}\n'
-            f'Top 5 CPU:\n'
         )
-        for i, (n, v) in enumerate(top5_cpu, 1):
-            flag = ' ◀ 높음' if v > 50 else ''
-            msg += f' {i}. {n}: {v}%{flag}\n'
-
-        if top5_ram and top5_ram[0][1] > 0:
-            total_ram_mb = psutil.virtual_memory().total / (1024 * 1024)
-            msg += f'\nTop 5 RAM:\n'
-            for i, (n, v) in enumerate(top5_ram, 1):
-                pct = round(v / total_ram_mb * 100, 1) if total_ram_mb > 0 else 0
-                flag = '  ◀ 높음' if v > 2048 else ''
-                msg += f' {i}. {n}: {pct}%{flag}\n'
-
-        if top5_gpu and top5_gpu[0][1] > 0:
-            msg += f'\nTop 5 GPU:\n'
-            for i, (n, v) in enumerate(top5_gpu, 1):
-                flag = ' ◀ 높음' if v > 50 else ''
-                msg += f' {i}. {n}: {v}%{flag}\n'
+        msg += fmt_top5('Top 5 CPU', top5_cpu, 50)
+        msg += fmt_top5('Top 5 RAM', top5_ram, 50)
+        msg += fmt_top5('Top 5 GPU', top5_gpu, 50)
 
         ctypes.windll.user32.MessageBoxW(0, msg, 'PC Monitor', 0)
     except Exception as e:
