@@ -27,6 +27,7 @@ class SystemCollector:
         self._proc_cache = []
         self._slow_tick = 0
         self._proc_history = {}  # {name: {cpu: [], ram: [], gpu: []}}
+        self._gpu_context = set()  # process names with GPU context
         self.stats = {
             'cpu_pct': [], 'gpu_pct': [], 'gpu_temp': [],
             'cpu_temp': [], 'vram_pct': [], 'mem_pct': [],
@@ -99,6 +100,8 @@ class SystemCollector:
     def get_process_top5(self, metric='cpu'):
         names = {}
         for name, h in self._proc_history.items():
+            if metric == 'gpu' and name not in self._gpu_context:
+                continue
             vals = [v for v in h[metric] if v > 0]
             if vals:
                 avg = round(sum(vals) / len(vals), 1)
@@ -168,8 +171,10 @@ class SystemCollector:
         diag_html = '<br>'.join(diag_lines)
 
         # Top5 tables
-        def top5_table(items, unit='%', high_thresh=50):
-            if not items or items[0][1] == 0:
+        def top5_table(items, unit='%', high_thresh=50, force=False):
+            if not items:
+                return ''
+            if not force and items[0][1] == 0:
                 return ''
             rows_t5 = ''
             for i, (n, v) in enumerate(items, 1):
@@ -183,8 +188,8 @@ class SystemCollector:
 <tr><th>#</th><th>Process</th><th>Usage</th></tr>
 {rows_t5}</table>'''
 
-        def top5_section(label, items, unit='%', thresh=50):
-            tbl = top5_table(items, unit, thresh)
+        def top5_section(label, items, unit='%', thresh=50, force=False):
+            tbl = top5_table(items, unit, thresh, force)
             if not tbl:
                 return ''
             return f'<h2>Top 5 {label}</h2>{tbl}'
@@ -226,7 +231,7 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
 
 {top5_section('CPU', top5_cpu, '%', 50)}
 {top5_section('RAM', top5_ram, 'MB', 2048)}
-{top5_section('GPU', top5_gpu, '%', 50)}
+{top5_section('GPU', top5_gpu, '%', 50, True)}
 
 <h2>Event Log ({event_count} entries)</h2>
 <table>
@@ -303,6 +308,9 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
                             'gpu_sm': gp['gpu_sm'],
                             'gpu_mem': gp['gpu_mem'],
                         })
+                # Track GPU context for report
+                for gp in gpu_procs:
+                    self._gpu_context.add(gp['name'])
                 # Cap total at 10 (CPU + GPU combined)
                 self._proc_cache.sort(key=lambda p: p.get('cpu_percent', 0), reverse=True)
                 self._proc_cache = self._proc_cache[:8]
