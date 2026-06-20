@@ -13,6 +13,7 @@ from monitor.network import get_network_speed
 from monitor.processes import get_top_processes
 from monitor.diagnostic import analyze
 from monitor.events import check as check_events, check_idle
+from monitor.gpu import get_gpu_processes
 
 logger = logging.getLogger('pc-monitor')
 
@@ -39,9 +40,9 @@ class SystemCollector:
         self.prev_time = time.time()
         self.start_time = time.time()
         self._log_event('info', '🚀', '세션 시작')
-        # Prime process CPU (first call returns 0, primes for second call)
+        # Prime process CPU + populate cache
         try:
-            get_top_processes(n=8)
+            self._proc_cache = get_top_processes(n=8)
         except Exception:
             pass
 
@@ -186,12 +187,23 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
             network = {'download_speed': 0, 'upload_speed': 0}
 
         self._slow_tick += 1
-        if self._slow_tick % 4 == 0:
+        if self._slow_tick % 4 == 1:
             try:
                 self._proc_cache = get_top_processes()
             except Exception as e:
                 logger.warning(f'Process error: {e}')
                 self._proc_cache = []
+            # Merge GPU usage into process list
+            try:
+                gpu_procs = get_gpu_processes()
+                gpu_map = {p['name'].lower(): p for p in gpu_procs}
+                for p in self._proc_cache:
+                    g = gpu_map.get(p['name'].lower())
+                    if g:
+                        p['gpu_sm'] = g['gpu_sm']
+                        p['gpu_mem'] = g['gpu_mem']
+            except Exception:
+                pass
         processes = self._proc_cache
 
         self.prev_time = now

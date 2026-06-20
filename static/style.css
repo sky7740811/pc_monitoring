@@ -83,7 +83,7 @@ header{
 .proc-hdr{font-size:.55rem;font-weight:600;letter-spacing:1px;opacity:.3;padding-bottom:6px}
 #procList{display:flex;flex-direction:column;gap:3px}
 .proc-row{
-  display:grid;grid-template-columns:1fr 70px 65px;
+  display:grid;grid-template-columns:1fr 55px 55px 50px;
   align-items:center;gap:6px;padding:6px 8px;border-radius:6px;
   font-size:.8rem;background:rgba(255,255,255,.012)
 }

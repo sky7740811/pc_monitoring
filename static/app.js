@@ -14,6 +14,7 @@ const stopBtn = $('stopBtn');
 const N = 60;
 
 const chartsOk = typeof Chart !== 'undefined';
+const logEvents = [];
 function makeChart(ctx, color) {
   if (!chartsOk) return null;
   const c = ctx.getContext('2d');
@@ -122,21 +123,29 @@ function update(d) {
   for (const p of procs) {
     const cw = Math.min(100, p.cpu_percent);
     const mw = Math.min(100, p.memory_mb / 512 * 100);
-    const ms = p.memory_mb > 1024 ? (p.memory_mb / 1024).toFixed(1) + 'G' : p.memory_mb + 'M';
-    ph += '<div class="proc-row">'
-       + '<span class="proc-name" title="' + p.name + '">' + p.name + '</span>'
-       + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar cpu" style="width:' + cw + '%"></div></div><span class="proc-stat">' + p.cpu_percent + '%</span></div>'
-       + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar mem" style="width:' + mw + '%"></div></div><span class="proc-stat">' + ms + '</span></div>'
-       + '</div>';
+     const ms = p.memory_mb > 1024 ? (p.memory_mb / 1024).toFixed(1) + 'G' : p.memory_mb + 'M';
+     const gw = p.gpu_sm || 0;
+     ph += '<div class="proc-row" style="grid-template-columns:1fr 55px 55px 50px">'
+        + '<span class="proc-name" title="' + p.name + '">' + p.name + '</span>'
+        + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar cpu" style="width:' + cw + '%"></div></div><span class="proc-stat">' + p.cpu_percent + '%</span></div>'
+        + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar mem" style="width:' + mw + '%"></div></div><span class="proc-stat">' + ms + '</span></div>'
+        + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar" style="background:#ff6b35;width:' + gw + '%"></div></div><span class="proc-stat">' + gw + '%</span></div>'
+        + '</div>';
   }
    procList.innerHTML = ph;
 
-   // Log - only non-success events
+   // Log - accumulate abnormal events
    if (d.log_buffer) {
-     let lh = '';
      const WARN = {'warning':1,'danger':1,'idle':1};
      for (const e of d.log_buffer) {
        if (!WARN[e.type]) continue;
+       const key = e.time + e.msg;
+       if (!logEvents.some(x => x.key === key)) {
+         logEvents.push({key: key, time: e.time, icon: e.icon, msg: e.msg, type: e.type});
+       }
+     }
+     let lh = '';
+     for (const e of logEvents) {
        const cls = e.type === 'warning' ? 'l-warning' : e.type === 'danger' ? 'l-danger' : 'l-idle';
        lh += '<div class="log-row ' + cls + '">'
           + '<span class="log-time">' + e.time + '</span>'
