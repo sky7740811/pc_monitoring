@@ -26,6 +26,7 @@ class SystemCollector:
         self.start_time = None
         self._proc_cache = []
         self._slow_tick = 0
+        self._proc_history = {}  # {name: {cpu: [], ram: [], gpu: []}}
         self.stats = {
             'cpu_pct': [], 'gpu_pct': [], 'gpu_temp': [],
             'cpu_temp': [], 'vram_pct': [], 'mem_pct': [],
@@ -39,16 +40,16 @@ class SystemCollector:
         psutil.cpu_percent(interval=None, percpu=True)
         self.prev_time = time.time()
         self.start_time = time.time()
-        self._log_event('info', '🚀', '세션 시작')
+        self._log_event('info', '🚀', '세션 시작', 'PC Monitor monitoring session started.')
         # Prime process CPU + populate cache
         try:
             self._proc_cache = get_top_processes(n=8)
         except Exception:
             pass
 
-    def _log_event(self, etype, icon, msg):
+    def _log_event(self, etype, icon, msg, detail=''):
         now = datetime.now().strftime('%H:%M:%S')
-        entry = {'time': now, 'type': etype, 'icon': icon, 'msg': msg}
+        entry = {'time': now, 'type': etype, 'icon': icon, 'msg': msg, 'detail': detail}
         self.log_buffer.append(entry)
         if len(self.log_buffer) > 500:
             self.log_buffer.pop(0)
@@ -95,6 +96,18 @@ class SystemCollector:
             'dangers': sum(1 for e in self.log_buffer if e['type'] == 'danger'),
         }
 
+    def get_process_top5(self, metric='cpu'):
+        names = {}
+        for name, h in self._proc_history.items():
+            vals = [v for v in h[metric] if v > 0]
+            if vals:
+                avg = round(sum(vals) / len(vals), 1)
+                names[name] = avg
+            else:
+                names[name] = 0
+        sorted_names = sorted(names.items(), key=lambda x: x[1], reverse=True)
+        return sorted_names[:5]
+
     def save_html(self):
         summary = self.get_summary()
         start_dt = datetime.fromtimestamp(self.start_time).strftime('%Y-%m-%d %H:%M:%S')
@@ -103,9 +116,14 @@ class SystemCollector:
         fname = datetime.fromtimestamp(self.start_time).strftime('%Y-%m-%d_%H%M%S') + '.html'
         fpath = os.path.join(log_dir, fname)
 
+        # Filter out "normal" events for the log
+        log_events_filtered = [e for e in self.log_buffer if e['type'] != 'success']
         rows = ''
-        for e in self.log_buffer:
+        for e in log_events_filtered:
             rows += f'<tr><td>{e["time"]}</td><td>{e["icon"]}</td><td>{e["type"]}</td><td>{e["msg"]}</td></tr>\n'
+        event_count = len(log_events_filtered)
+        if not rows:
+            rows = '<tr><td colspan="4" style="text-align:center;opacity:.3">Aucun evenement anormal</td></tr>'
 
         html = f'''<!DOCTYPE html>
 <html lang="ko">
@@ -139,7 +157,7 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
 <tr><td>Alerts</td><td>⚠️ {summary["warnings"]} / 🔥 {summary["dangers"]}</td></tr>
 </table>
 
-<h2>Event Log ({len(self.log_buffer)} entries)</h2>
+<h2>Event Log ({event_count} entries)</h2>
 <table>
 <tr><th>Time</th><th></th><th>Type</th><th>Message</th></tr>
 {rows}
@@ -221,6 +239,20 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
                 pass
         processes = self._proc_cache
 
+        # Track per-process history for session top5
+        for p in processes:
+            name = p['name']
+            if name not in self._proc_history:
+                self._proc_history[name] = {'cpu': [], 'ram': [], 'gpu': []}
+            h = self._proc_history[name]
+            h['cpu'].append(p.get('cpu_percent', 0))
+            h['ram'].append(p.get('memory_mb', 0))
+            h['gpu'].append(p.get('gpu_sm', 0))
+            # Keep last 300 samples (~5 min at 1s, ~10 min at 2s)
+            for k in ('cpu', 'ram', 'gpu'):
+                if len(h[k]) > 300:
+                    h[k].pop(0)
+
         self.prev_time = now
 
         data = {
@@ -253,7 +285,7 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
             idle = check_idle(processes)
             all_events = events + idle
             for ev in all_events:
-                self._log_event(ev['type'], ev['icon'], ev['msg'])
+                self._log_event(ev['type'], ev['icon'], ev['msg'], ev.get('detail', ''))
             data['log_events'] = all_events
             log_ok = True
         except Exception as e:

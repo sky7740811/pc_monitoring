@@ -144,19 +144,20 @@ function update(d) {
      const WARN = {'warning':1,'danger':1,'idle':1};
      for (const e of d.log_buffer) {
        if (!WARN[e.type]) continue;
-       const key = e.time + e.msg;
-       if (!logEvents.some(x => x.key === key)) {
-         logEvents.push({key: key, time: e.time, icon: e.icon, msg: e.msg, type: e.type});
-       }
-     }
-     let lh = '';
-     for (const e of logEvents) {
-       const cls = e.type === 'warning' ? 'l-warning' : e.type === 'danger' ? 'l-danger' : 'l-idle';
-       lh += '<div class="log-row ' + cls + '">'
-          + '<span class="log-time">' + e.time + '</span>'
-          + '<span class="log-msg">' + e.icon + ' ' + e.msg + '</span></div>';
-     }
-     $('logList').innerHTML = lh || '<div style="text-align:center;padding:16px 0;font-size:.65rem;opacity:.25">\uBAA8\uB450 \uC815\uC0C1</div>';
+      const key = e.time + e.msg;
+        if (!logEvents.some(x => x.key === key)) {
+          logEvents.push({key, time: e.time, icon: e.icon, msg: e.msg, type: e.type, detail: e.detail});
+        }
+      }
+      let lh = '';
+      for (let i = 0; i < logEvents.length; i++) {
+        const e = logEvents[i];
+        const cls = e.type === 'warning' ? 'l-warning' : e.type === 'danger' ? 'l-danger' : 'l-idle';
+        lh += '<div class="log-row ' + cls + '" data-idx="' + i + '">'
+           + '<span class="log-time">' + e.time + '</span>'
+           + '<span class="log-msg">' + e.icon + ' ' + e.msg + '</span></div>';
+      }
+      $('logList').innerHTML = lh || '<div style="text-align:center;padding:16px 0;font-size:.65rem;opacity:.25">\uBAA8\uB450 \uC815\uC0C1</div>';
    }
 }
 
@@ -214,5 +215,23 @@ stopBtn.onclick = () => {
   stopBtn.textContent = '...';
   stopBtn.disabled = true;
 };
+
+/* Event detail modal */
+const modal = $('modal');
+$('modalClose').onclick = () => modal.classList.remove('show');
+modal.onclick = e => { if (e.target === modal || e.target.classList.contains('modal-bg')) modal.classList.remove('show'); };
+
+document.addEventListener('click', e => {
+  const row = e.target.closest('.log-row');
+  if (!row) return;
+  const idx = parseInt(row.dataset.idx);
+  if (isNaN(idx) || !logEvents[idx]) return;
+  const ev = logEvents[idx];
+  const typeLabel = { warning: '\u26A0\uFE0F Warning', danger: '\U0001F525 Danger', idle: '\U0001F4A4 Idle' };
+  $('modalTitle').textContent = typeLabel[ev.type] || ev.type;
+  const detail = (ev.detail && ev.detail.trim()) ? ev.detail : 'No detailed information available for this event.';
+  $('modalBody').textContent = ev.icon + ' ' + ev.msg + '\n\n' + detail;
+  modal.classList.add('show');
+});
 
 connect();

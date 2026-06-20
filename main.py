@@ -67,6 +67,49 @@ async def stop():
 async def _shutdown():
     await asyncio.sleep(0.3)
     try:
+        s = collector.get_summary()
+        top5_cpu = collector.get_process_top5('cpu')
+        top5_ram = collector.get_process_top5('ram')
+        top5_gpu = collector.get_process_top5('gpu')
+
+        w = s['warnings']; d = s['dangers']
+        status = 'GOOD' if w == 0 and d == 0 else 'WARNING' if d == 0 else 'DANGER'
+
+        msg = (
+            f'PC Monitor - Session Report\n'
+            f'Duration: {s["duration"]}\n'
+            f'Status: {status}  (Health: {s.get("health", "-")}/100)\n'
+            f'─────────────────────\n'
+            f'CPU: avg {s["cpu_avg"]}% / max {s["cpu_max"]}%\n'
+            f'GPU: avg {s["gpu_avg"]}% / max {s["gpu_max"]}%\n'
+            f'GPU Temp: avg {s["gpu_temp_avg"]}°C / max {s["gpu_temp_max"]}°C\n'
+            f'RAM: avg {s["mem_avg"]}%\n'
+            f'─────────────────────\n'
+            f'⚠️ {w} warnings  🔥 {d} dangers\n\n'
+            f'Top 5 CPU:\n'
+        )
+        for i, (n, v) in enumerate(top5_cpu, 1):
+            flag = '  ← HIGH' if v > 50 else ''
+            msg += f' {i}. {n}: {v}%{flag}\n'
+
+        if top5_ram and top5_ram[0][1] > 0:
+            msg += f'\nTop 5 RAM:\n'
+            for i, (n, v) in enumerate(top5_ram, 1):
+                v_gb = round(v / 1024, 1)
+                flag = '  ← HIGH' if v > 2048 else ''
+                msg += f' {i}. {n}: {v_gb}GB{flag}\n'
+
+        if top5_gpu and top5_gpu[0][1] > 0:
+            msg += f'\nTop 5 GPU:\n'
+            for i, (n, v) in enumerate(top5_gpu, 1):
+                flag = '  ← HIGH' if v > 50 else ''
+                msg += f' {i}. {n}: {v}%{flag}\n'
+
+        ctypes.windll.user32.MessageBoxW(0, msg, 'PC Monitor', 0)
+    except Exception as e:
+        logger.error(f'Shutdown summary error: {e}')
+
+    try:
         path = collector.save_html()
         logger.info(f'Session saved: {path}')
     except Exception as e:
