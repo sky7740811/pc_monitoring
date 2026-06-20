@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PC Monitor</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js">
+</script>
+</head>
+<body>
+
+<header>
+  <div class="hdr-l">
+    <span class="hdr-title">PC MONITOR</span>
+    <span class="hdr-status" id="status">●</span>
+  </div>
+  <div class="hdr-r">
+    <div class="score" id="scoreBox">
+      <span class="score-num" id="healthScore">--</span>
+      <span class="score-lbl">점수</span>
+    </div>
+    <button class="btn-stop" id="stopBtn" title="종료">✕</button>
+  </div>
+</header>
+
+<!-- Tab bar -->
+<div class="tabs">
+  <button class="tab tab-a" data-tab="dash">📊 대시보드</button>
+  <button class="tab" data-tab="log">📋 로그</button>
+</div>
+
+<main>
+
+<!-- Dashboard tab -->
+<div class="panel panel-dash">
+
+  <section class="bars">
+    <div class="bar" data-c="cpu">
+      <div class="bar-h">
+        <span class="bar-lbl">CPU</span>
+        <span class="bar-val" id="cpuPct">0%</span>
+      </div>
+      <div class="bar-tr">
+        <div class="bar-fill" id="cpuFill" style="width:0%"></div>
+      </div>
+      <div class="bar-f">
+        <span id="cpuFreq">-- GHz</span>
+        <span id="cpuTemp">-- °C</span>
+      </div>
+    </div>
+    <div class="bar" data-c="gpu">
+      <div class="bar-h">
+        <span class="bar-lbl">GPU</span>
+        <span class="bar-val" id="gpuPct">0%</span>
+      </div>
+      <div class="bar-tr">
+        <div class="bar-fill" id="gpuFill" style="width:0%"></div>
+      </div>
+      <div class="bar-f">
+        <span id="gpuTemp">-- °C</span>
+        <span id="gpuVram">-- MB</span>
+      </div>
+    </div>
+    <div class="bar" data-c="ram">
+      <div class="bar-h">
+        <span class="bar-lbl">RAM</span>
+        <span class="bar-val" id="ramPct">0%</span>
+      </div>
+      <div class="bar-tr">
+        <div class="bar-fill" id="ramFill" style="width:0%"></div>
+      </div>
+      <div class="bar-f">
+        <span id="ramUsed">-- GB</span>
+        <span>/ <span id="ramTotal">--</span> GB</span>
+      </div>
+    </div>
+    <div class="bar" data-c="net">
+      <div class="bar-h">
+        <span class="bar-lbl">NET</span>
+        <span class="bar-val" id="netDown">↓ 0.00</span>
+      </div>
+      <div class="bar-tr">
+        <div class="bar-fill" id="netFill" style="width:0%"></div>
+      </div>
+      <div class="bar-f">
+        <span>↑ <span id="netUp">0.00</span> MB/s</span>
+        <span>💾 <span id="diskRead">0.0</span>/<span id="diskWrite">0.0</span></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="chart-section">
+    <div class="chart-box">
+      <div class="chart-lbl" style="color:#00d4ff">CPU</div>
+      <div class="chart-wr"><canvas id="cpuChart"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-lbl" style="color:#ff6b35">GPU</div>
+      <div class="chart-wr"><canvas id="gpuChart"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-lbl" style="color:#7c3aed">RAM</div>
+      <div class="chart-wr"><canvas id="ramChart"></canvas></div>
+    </div>
+  </section>
+
+  <section id="diagSection">
+    <div id="diagList"></div>
+  </section>
+
+  <section class="proc-section">
+    <div class="proc-hdr">🔝 PROCESS</div>
+    <div id="procList"></div>
+  </section>
+
+</div>
+
+<!-- Log tab -->
+<div class="panel panel-log">
+
+  <div class="log-filters" id="logFilters">
+    <button class="lfil lfil-a" data-f="all">✅ 전체</button>
+    <button class="lfil" data-f="warning">⚠️ 경고</button>
+    <button class="lfil" data-f="danger">🔥 위험</button>
+    <button class="lfil" data-f="idle">💤 유휴</button>
+  </div>
+
+  <div class="log-list" id="logList">
+    <div class="log-empty">로그가 없습니다</div>
+  </div>
+
+  <div class="log-summary" id="logSummary"></div>
+
+  <button class="btn-export" id="btnExport">📥 세션 저장 (HTML)</button>
+
+</div>
+
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
