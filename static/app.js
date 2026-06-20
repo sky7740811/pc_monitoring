@@ -129,7 +129,21 @@ function update(d) {
        + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar mem" style="width:' + mw + '%"></div></div><span class="proc-stat">' + ms + '</span></div>'
        + '</div>';
   }
-  procList.innerHTML = ph;
+   procList.innerHTML = ph;
+
+   // Log - only non-success events
+   if (d.log_buffer) {
+     let lh = '';
+     const WARN = {'warning':1,'danger':1,'idle':1};
+     for (const e of d.log_buffer) {
+       if (!WARN[e.type]) continue;
+       const cls = e.type === 'warning' ? 'l-warning' : e.type === 'danger' ? 'l-danger' : 'l-idle';
+       lh += '<div class="log-row ' + cls + '">'
+          + '<span class="log-time">' + e.time + '</span>'
+          + '<span class="log-msg">' + e.icon + ' ' + e.msg + '</span></div>';
+     }
+     $('logList').innerHTML = lh || '<div style="text-align:center;padding:16px 0;font-size:.65rem;opacity:.25">\uBAA8\uB450 \uC815\uC0C1</div>';
+   }
 }
 
 stopBtn.onclick = () => {

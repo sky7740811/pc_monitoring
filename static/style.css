@@ -93,3 +93,16 @@ header{
 .proc-bar.cpu{background:#00d4ff}
 .proc-bar.mem{background:#7c3aed}
 .proc-stat{text-align:right;font-variant-numeric:tabular-nums;font-size:.7rem;opacity:.45;line-height:1}
+
+.log-section{padding:0 12px 20px}
+#logList{display:flex;flex-direction:column;gap:2px;max-height:160px;overflow-y:auto}
+.log-row{
+  display:grid;grid-template-columns:44px 1fr;
+  padding:3px 6px;border-radius:4px;font-size:.65rem;gap:3px;align-items:baseline;
+  background:rgba(255,255,255,.008)
+}
+.log-time{opacity:.3;font-variant-numeric:tabular-nums}
+.log-msg{opacity:.7;word-break:break-all}
+.log-row.l-warning{border-left:2px solid rgba(245,158,11,.25)}
+.log-row.l-danger{border-left:2px solid rgba(239,68,68,.25)}
+.log-row.l-idle{border-left:2px solid rgba(168,130,255,.25)}
