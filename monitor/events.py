@@ -11,13 +11,15 @@ IDLE_CPU = 10
 IDLE_RAM = 500
 
 
-def _top_by(data, key):
-    """Return (name, value) of process with highest `key`."""
+def _top_n(data, key, n=3):
+    """Return top N processes by `key` (normalized %)."""
     procs = data.get('processes', [])
-    if not procs:
-        return ('', 0)
-    best = max(procs, key=lambda p: p.get(key, 0))
-    return (best['name'], best.get(key, 0))
+    sorted_procs = sorted(procs, key=lambda p: p.get(key, 0), reverse=True)
+    return [(p['name'], p.get(key, 0)) for p in sorted_procs if p.get(key, 0) > 0][:n]
+
+
+def _format_proc_list(procs, unit='%'):
+    return ', '.join(f'{n}: {v}{unit}' for n, v in procs)
 
 
 def check_idle(processes):
@@ -58,8 +60,8 @@ def check(data, history):
     vp = gpu.get('vram_percent', 0); mp = mem.get('percent', 0)
 
     if gt > 85:
-        pname, _ = _top_by(data, 'gpu_sm')
-        cause = f' (주로 {pname}에서 GPU 사용 중)' if pname else ''
+        top_gpu = _top_n(data, 'gpu_sm')
+        cause = ' (GPU 사용: ' + _format_proc_list(top_gpu) + ')' if top_gpu else ''
         events.append({'type': 'danger', 'icon': '\U0001f525',
             'msg': f'GPU {gt}°C — 온도 위험!',
             'detail': f'GPU 온도가 {gt}°C에 도달했습니다.{cause}\n'
@@ -70,8 +72,8 @@ def check(data, history):
                       f'• GPU 클럭 속도 강제 제한 (MSI Afterburner)\n'
                       f'• GPU 먼지 청소 및 서멀 재도포'})
     elif gt > 75:
-        pname, _ = _top_by(data, 'gpu_sm')
-        cause = f' (주로 {pname})' if pname else ''
+        top_gpu = _top_n(data, 'gpu_sm')
+        cause = ' (GPU 사용: ' + _format_proc_list(top_gpu) + ')' if top_gpu else ''
         events.append({'type': 'warning', 'icon': '\u26a0\uFE0F',
             'msg': f'GPU {gt}°C — 온도 주의',
             'detail': f'GPU 온도가 {gt}°C입니다.{cause}\n'
@@ -82,8 +84,8 @@ def check(data, history):
                       f'• GPU 팬 먼지 점검'})
 
     if ct and ct > 90:
-        pname, _ = _top_by(data, 'cpu_percent')
-        cause = f' (CPU 사용 1위: {pname})' if pname else ''
+        top_cpu = _top_n(data, 'cpu_percent')
+        cause = ' (CPU 사용: ' + _format_proc_list(top_cpu) + ')' if top_cpu else ''
         events.append({'type': 'danger', 'icon': '\U0001f525',
             'msg': f'CPU {ct}°C — 온도 위험!',
             'detail': f'CPU 온도가 {ct}°C까지 올라갔습니다.{cause}\n'
@@ -95,8 +97,8 @@ def check(data, history):
                       f'• 케이스 에어플로우 개선'})
 
     if gl > 90 and cl < 60:
-        pname, pv = _top_by(data, 'gpu_sm')
-        cause = f' — {pname}이(가) GPU {pv}% 사용 중' if pname else ''
+        top_gpu = _top_n(data, 'gpu_sm')
+        cause = '\nGPU 사용 프로세스: ' + _format_proc_list(top_gpu) if top_gpu else ''
         events.append({'type': 'warning', 'icon': '\u26a0\uFE0F',
             'msg': f'GPU 병목 (GPU {gl}% · CPU {cl}%)',
             'detail': f'GPU 사용률({gl}%)이 CPU({cl}%)보다 현저히 높습니다.{cause}\n'
@@ -107,25 +109,22 @@ def check(data, history):
                       f'• DLSS/FSR 업스케일링 활성화\n'
                       f'• CPU 오버클럭 또는 업그레이드 고려'})
     elif cl > 85 and gl < 70:
-        pname, pv = _top_by(data, 'cpu_percent')
-        cause = f' — {pname}이(가) CPU {pv}% 사용 중' if pname else ''
+        top_cpu = _top_n(data, 'cpu_percent')
+        cause = '\nCPU 높은 프로세스:\n  ' + '\n  '.join(f'{n}: {v}%' for n, v in top_cpu) if top_cpu else ''
         events.append({'type': 'warning', 'icon': '\u26a0\uFE0F',
             'msg': f'CPU 병목 (CPU {cl}% · GPU {gl}%)',
-            'detail': f'CPU 사용률({cl}%)이 GPU({gl}%)보다 현저히 높습니다.{cause}\n'
-                      f'CPU가 병목 지점입니다.\n\n'
+            'detail': f'CPU 사용률({cl}%)이 GPU({gl}%)보다 현저히 높습니다.{cause}\n\n'
+                      f'위 프로세스 중 게임 외 불필요한 것을 종료하면\n'
+                      f'CPU 병목이 완화될 수 있습니다.\n\n'
                       f'권장 조치:\n'
-                      f'• 백그라운드 프로그램 종료\n'
+                      f'• 위 목록에서 게임이 아닌 프로세스 종료\n'
                       f'• 해상도/그래픽 옵션 올리기 (GPU 부하 증가)\n'
                       f'• CPU 집중 설정(물리 효과, NPC 수 등) 낮추기\n'
                       f'• CPU 오버클럭 검토'})
 
     if vp > 90:
-        pname, pv = _top_by(data, 'gpu_mem')
-        cause = ''
-        if pname:
-            vram_mb = gpu.get('vram_used', 0)
-            pv_mb = int(pv) if isinstance(pv, (int, float)) else 0
-            cause = f' — {pname}이(가) VRAM {pv_mb}MB 사용 중' if pv_mb > 0 else f' — {pname}에서 GPU 사용 중'
+        top_vram = _top_n(data, 'gpu_mem')
+        cause = '\nVRAM 사용: ' + _format_proc_list(top_vram, 'MB') if top_vram else ''
         events.append({'type': 'warning', 'icon': '\u26a0\uFE0F',
             'msg': f'VRAM {vp}% — 텍스처 품질 낮추세요',
             'detail': f'VRAM 사용률이 {vp}%입니다.{cause}\n\n'
@@ -137,20 +136,19 @@ def check(data, history):
                       f'• 텍스처 스트리밍 옵션 확인'})
 
     if mp > 90:
-        pname, pv = _top_by(data, 'memory_mb')
-        cause = f' — {pname}이(가) RAM {pv}MB 사용 중' if pname else ''
+        top_ram = _top_n(data, 'memory_mb')
+        cause = '\nRAM 높은 프로세스:\n  ' + '\n  '.join(f'{n}: {v}MB' for n, v in top_ram) if top_ram else ''
         events.append({'type': 'warning', 'icon': '\u26a0\uFE0F',
             'msg': f'RAM {mp}% — 메모리 부족',
-            'detail': f'시스템 메모리 사용률이 {mp}%입니다.{cause}\n'
-                      f'32GB 중 {mem.get("used_gb", "?")}GB 사용 중.\n\n'
+            'detail': f'시스템 메모리 사용률이 {mp}%입니다.{cause}\n\n'
                       f'권장 조치:\n'
-                      f'• 불필요한 브라우저 탭/앱 종료\n'
+                      f'• 위 목록에서 게임이 아닌 프로세스 종료\n'
                       f'• 가상 메모리(페이지 파일) 설정 확인\n'
                       f'• 메모리 누수가 있는 프로그램 확인'})
 
     if ct and ct > 90 and cl < 50:
-        pname, _ = _top_by(data, 'cpu_percent')
-        cause = f' (최대 CPU 사용: {pname})' if pname else ''
+        top_cpu = _top_n(data, 'cpu_percent')
+        cause = '\nCPU 사용: ' + _format_proc_list(top_cpu) if top_cpu else ''
         events.append({'type': 'danger', 'icon': '\U0001f525',
             'msg': f'쓰로틀링 의심 (CPU {ct}°C + 사용률 {cl}%)',
             'detail': f'CPU 온도({ct}°C)는 높은데 사용률({cl}%)이 낮습니다.{cause}\n'
