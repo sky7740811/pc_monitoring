@@ -24,16 +24,7 @@
   </div>
 </header>
 
-<!-- Tab bar -->
-<div class="tabs">
-  <button class="tab tab-a" data-tab="dash">📊 대시보드</button>
-  <button class="tab" data-tab="log">📋 로그</button>
-</div>
-
 <main>
-
-<!-- Dashboard tab -->
-<div class="panel panel-dash">
 
   <section class="bars">
     <div class="bar" data-c="cpu">
@@ -113,28 +104,6 @@
     <div class="proc-hdr">🔝 PROCESS</div>
     <div id="procList"></div>
   </section>
-
-</div>
-
-<!-- Log tab -->
-<div class="panel panel-log">
-
-  <div class="log-filters" id="logFilters">
-    <button class="lfil lfil-a" data-f="all">✅ 전체</button>
-    <button class="lfil" data-f="warning">⚠️ 경고</button>
-    <button class="lfil" data-f="danger">🔥 위험</button>
-    <button class="lfil" data-f="idle">💤 유휴</button>
-  </div>
-
-  <div class="log-list" id="logList">
-    <div class="log-empty">로그가 없습니다</div>
-  </div>
-
-  <div class="log-summary" id="logSummary"></div>
-
-  <button class="btn-export" id="btnExport">📥 세션 저장 (HTML)</button>
-
-</div>
 
 </main>
 

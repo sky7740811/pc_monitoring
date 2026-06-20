@@ -10,51 +10,31 @@ const diskRead = $('diskRead'), diskWrite = $('diskWrite');
 const diagList = $('diagList');
 const procList = $('procList');
 const stopBtn = $('stopBtn');
-const logList = $('logList');
-const logSummary = $('logSummary');
-const btnExport = $('btnExport');
 
 const N = 60;
-const labels = Array(N).fill('');
 
-let logBuffer = [];
-
-/* Charts - skip if Chart.js not loaded */
 const chartsOk = typeof Chart !== 'undefined';
-
 function makeChart(ctx, color) {
+  if (!chartsOk) return null;
   const c = ctx.getContext('2d');
   const grad = c.createLinearGradient(0, 0, 0, 42);
   grad.addColorStop(0, color + '35');
   grad.addColorStop(1, color + '00');
   return new Chart(ctx, {
     type: 'line',
-    data: { labels, datasets: [{ data: Array(N).fill(0), borderColor: color, backgroundColor: grad, borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0 }] },
+    data: { labels: Array(N).fill(''), datasets: [{ data: Array(N).fill(0), borderColor: color, backgroundColor: grad, borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0 }] },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
       scales: { x: { display: false }, y: { min: 0, max: 100, display: false } },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          enabled: true,
-          mode: 'nearest',
-          intersect: false,
-          callbacks: {
-            label: ctx => ctx.parsed.y.toFixed(1) + '%'
-          }
-        }
-      },
+      plugins: { legend: { display: false }, tooltip: { enabled: true, mode: 'nearest', intersect: false, callbacks: { label: ctx => ctx.parsed.y.toFixed(1) + '%' } } },
       interaction: { intersect: false, mode: 'nearest' },
     },
   });
 }
 
-let cpuChart, gpuChart, ramChart;
-if (chartsOk) {
-  cpuChart = makeChart($('cpuChart'), '#00d4ff');
-  gpuChart = makeChart($('gpuChart'), '#ff6b35');
-  ramChart = makeChart($('ramChart'), '#7c3aed');
-}
+const cpuChart = makeChart($('cpuChart'), '#00d4ff');
+const gpuChart = makeChart($('gpuChart'), '#ff6b35');
+const ramChart = makeChart($('ramChart'), '#7c3aed');
 
 function pushChart(chart, val) {
   if (!chart) return;
@@ -150,83 +130,12 @@ function update(d) {
        + '</div>';
   }
   procList.innerHTML = ph;
-
-  // Update log buffer
-  if (d.log_buffer) {
-    logBuffer = d.log_buffer;
-  }
-  if (d.log_summary) {
-    renderSummary(d.log_summary);
-  }
-  renderLog();
 }
-
-/* Tab switching */
-const tabBtns = document.querySelectorAll('.tab');
-const panels = { dash: document.querySelector('.panel-dash'), log: document.querySelector('.panel-log') };
-let curTab = 'dash';
-if (panels.dash) panels.dash.style.display = '';
-tabBtns.forEach(btn => {
-  btn.onclick = () => {
-    curTab = btn.dataset.tab;
-    tabBtns.forEach(b => b.classList.toggle('tab-a', b === btn));
-    Object.keys(panels).forEach(k => { panels[k].style.display = k === curTab ? '' : 'none'; });
-    if (curTab === 'log') renderLog();
-  };
-});
-
-/* Log filters */
-let logFilter = 'all';
-document.querySelectorAll('.lfil').forEach(btn => {
-  btn.onclick = () => {
-    logFilter = btn.dataset.f;
-    document.querySelectorAll('.lfil').forEach(b => b.classList.toggle('lfil-a', b === btn));
-    renderLog();
-  };
-});
-
-function renderLog() {
-  let html = '';
-  const filtered = logFilter === 'all' ? logBuffer : logBuffer.filter(e => e.type === logFilter);
-  if (filtered.length === 0) {
-    html = '<div class="log-empty">\uB85C\uADF8\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4</div>';
-  } else {
-    for (const e of filtered) {
-      const cls = e.type === 'warning' ? 'l-warning' : e.type === 'danger' ? 'l-danger' : e.type === 'idle' ? 'l-idle' : e.type === 'info' ? 'l-info' : 'l-success';
-      html += '<div class="log-row ' + cls + '">'
-           + '<span class="log-time">' + e.time + '</span>'
-           + '<span class="log-msg">' + e.icon + ' ' + e.msg + '</span></div>';
-    }
-  }
-  logList.innerHTML = html;
-}
-
-function renderSummary(s) {
-  logSummary.innerHTML = '<table>'
-    + '<tr><td>\uC138\uC158</td><td>' + s.duration + '</td></tr>'
-    + '<tr><td>CPU</td><td>\uD3C9\uADPC ' + s.cpu_avg + '% / \uCD5C\uACE0 ' + s.cpu_max + '%</td></tr>'
-    + '<tr><td>GPU</td><td>\uD3C9\uADPC ' + s.gpu_avg + '% / \uCD5C\uACE0 ' + s.gpu_max + '%</td></tr>'
-    + '<tr><td>GPU Temp</td><td>\uD3C9\uADPC ' + s.gpu_temp_avg + '\u00B0C / \uCD5C\uACE0 ' + s.gpu_temp_max + '\u00B0C</td></tr>'
-    + '<tr><td>VRAM</td><td>\uCD5C\uACE0 ' + s.vram_max + '%</td></tr>'
-    + '<tr><td>RAM</td><td>\uD3C9\uADPC ' + s.mem_avg + '%</td></tr>'
-    + '<tr><td>\uACBD\uACE0</td><td>\u26A0\uFE0F ' + s.warnings + ' / \U0001F525 ' + s.dangers + '</td></tr>'
-    + '</table>';
-}
-
-/* Export */
-btnExport.onclick = () => {
-  fetch('/stop', { method: 'POST' }).catch(() => {});
-  btnExport.textContent = '저장 중...';
-  btnExport.disabled = true;
-};
 
 stopBtn.onclick = () => {
   fetch('/stop', { method: 'POST' }).catch(() => {});
   stopBtn.textContent = '...';
   stopBtn.disabled = true;
 };
-
-// Auto-refresh log tab periodically
-setInterval(() => { if (curTab === 'log') renderLog(); }, 3000);
 
 connect();
