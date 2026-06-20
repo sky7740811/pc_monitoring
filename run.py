@@ -1,5 +1,15 @@
 import ctypes, os, subprocess, sys, time, urllib.request
 
+# Auto-elevate to admin
+try:
+    if not ctypes.windll.shell32.IsUserAnAdmin():
+        script = os.path.abspath(__file__)
+        py = sys.executable
+        subprocess.Popen(['powershell', '-Command',
+            f"Start-Process '{py}' -ArgumentList '{script}' -Verb RunAs -WindowStyle Hidden"])
+        sys.exit(0)
+except: pass
+
 HOST, PORT = '127.0.0.1', 8765
 ROOT = os.path.dirname(os.path.abspath(__file__))
 HW = ctypes.windll.user32.ShowWindow
