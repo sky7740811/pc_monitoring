@@ -66,3 +66,6 @@
 2026-06-20 11:24:38,833 [INFO] Collector primed
 2026-06-20 11:24:38,834 [INFO] Session saved: D:\cpu\pc-monitor\log\2026-06-20_112437.html
 2026-06-20 11:24:38,835 [INFO] Session saved on shutdown
+2026-06-20 11:24:56,259 [INFO] Shutdown requested from dashboard
+2026-06-20 11:24:57,095 [INFO] Session saved: D:\cpu\pc-monitor\log\2026-06-20_112208.html
+2026-06-20 11:24:57,095 [INFO] Session saved: D:\cpu\pc-monitor\log\2026-06-20_112208.html

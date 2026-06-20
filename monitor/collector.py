@@ -193,15 +193,27 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
             except Exception as e:
                 logger.warning(f'Process error: {e}')
                 self._proc_cache = []
-            # Merge GPU usage into process list
+            # Merge GPU usage into process list (match by PID)
             try:
                 gpu_procs = get_gpu_processes()
-                gpu_map = {p['name'].lower(): p for p in gpu_procs}
+                gpu_map = {p['pid']: p for p in gpu_procs}
                 for p in self._proc_cache:
-                    g = gpu_map.get(p['name'].lower())
+                    g = gpu_map.get(p.get('pid'))
                     if g:
                         p['gpu_sm'] = g['gpu_sm']
                         p['gpu_mem'] = g['gpu_mem']
+                # Add GPU-only processes not already in the list
+                existing = {p.get('pid') for p in self._proc_cache}
+                for gp in gpu_procs:
+                    if gp['pid'] not in existing:
+                        self._proc_cache.append({
+                            'name': gp['name'],
+                            'pid': gp['pid'],
+                            'cpu_percent': 0,
+                            'memory_mb': 0,
+                            'gpu_sm': gp['gpu_sm'],
+                            'gpu_mem': gp['gpu_mem'],
+                        })
             except Exception:
                 pass
         processes = self._proc_cache

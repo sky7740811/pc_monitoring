@@ -7,7 +7,7 @@ def get_top_processes(n=8):
             'Secure System', 'Memory Compression'}
     cores = psutil.cpu_count() or 1
     try:
-        iter_proc = psutil.process_iter(['name', 'cpu_percent', 'memory_info'])
+        iter_proc = psutil.process_iter(['name', 'pid', 'cpu_percent', 'memory_info'])
         for proc in iter_proc:
             try:
                 info = proc.info
@@ -17,6 +17,7 @@ def get_top_processes(n=8):
                               if info['memory_info'] else 0)
                     processes.append({
                         'name': info['name'],
+                        'pid': info['pid'],
                         'cpu_percent': round(info['cpu_percent'] / cores, 1),
                         'memory_mb': round(mem_mb, 1),
                     })
