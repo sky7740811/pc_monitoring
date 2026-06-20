@@ -233,7 +233,7 @@ function renderProcs() {
     const ms = p.memory_mb > 1024 ? (p.memory_mb / 1024).toFixed(1) + 'G' : p.memory_mb.toFixed(1) + 'M';
     const gw = Math.min(100, p.gpu_sm);
     const cnt = p.count > 1 ? ' (' + p.count + ')' : '';
-    const displayName = p.display_name + cnt;
+    const displayName = p.display_name + cnt + ' (' + p.name + ')';
     ph += '<div class="proc-row" style="grid-template-columns:1fr 55px 55px 50px">'
        + '<span class="proc-name" title="' + p.name + '">' + displayName + '</span>'
        + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar cpu" style="width:' + cw + '%"></div></div><span class="proc-stat">' + p.cpu_percent.toFixed(1) + '%</span></div>'

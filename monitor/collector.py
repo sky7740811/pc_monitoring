@@ -365,16 +365,23 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
                 pass
         processes = self._proc_cache
 
-        # Track per-process history for session top5
+        # Track per-process history for session top5 (merge duplicates by name)
+        proc_sums = {}
         for p in processes:
             name = p['name']
+            if name not in proc_sums:
+                proc_sums[name] = {'cpu': 0.0, 'ram': 0.0, 'gpu': 0.0}
+            proc_sums[name]['cpu'] += p.get('cpu_percent', 0) or 0
+            proc_sums[name]['ram'] += p.get('memory_mb', 0) or 0
+            proc_sums[name]['gpu'] += p.get('gpu_sm', 0) or 0
+        for name, sums in proc_sums.items():
             if name not in self._proc_history:
                 self._proc_history[name] = {'cpu': [], 'ram': [], 'gpu': []}
             h = self._proc_history[name]
-            h['cpu'].append(p.get('cpu_percent', 0))
-            h['ram'].append(p.get('memory_mb', 0))
-            h['gpu'].append(p.get('gpu_sm', 0))
-            # Keep last 300 samples (~5 min at 1s, ~10 min at 2s)
+            h['cpu'].append(sums['cpu'])
+            h['ram'].append(sums['ram'])
+            h['gpu'].append(sums['gpu'])
+            # Keep last 300 samples
             for k in ('cpu', 'ram', 'gpu'):
                 if len(h[k]) > 300:
                     h[k].pop(0)
