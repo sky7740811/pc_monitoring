@@ -49,10 +49,10 @@ class SystemCollector:
         self._log_event('info', '🚀', '세션 시작', 'PC Monitor monitoring session started.')
         # Open NDJSON raw log
         try:
-            log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'log')
-            os.makedirs(log_dir, exist_ok=True)
+            raw_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'log', 'raw')
+            os.makedirs(raw_dir, exist_ok=True)
             ts = datetime.now().strftime('%Y-%m-%d_%H%M%S')
-            self._ndjson_path = os.path.join(log_dir, f'raw_{ts}.ndjson')
+            self._ndjson_path = os.path.join(raw_dir, f'{ts}.ndjson')
             self._ndjson_file = open(self._ndjson_path, 'w', encoding='utf-8')
         except Exception as e:
             logger.warning(f'NDJSON init failed: {e}')
