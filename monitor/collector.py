@@ -23,6 +23,8 @@ class SystemCollector:
         self.history = []
         self.log_buffer = []
         self.start_time = None
+        self._proc_cache = []
+        self._slow_tick = 0
         self.stats = {
             'cpu_pct': [], 'gpu_pct': [], 'gpu_temp': [],
             'cpu_temp': [], 'vram_pct': [], 'mem_pct': [],
@@ -183,11 +185,14 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
             logger.warning(f'Network error: {e}')
             network = {'download_speed': 0, 'upload_speed': 0}
 
-        try:
-            processes = get_top_processes()
-        except Exception as e:
-            logger.warning(f'Process error: {e}')
-            processes = []
+        self._slow_tick += 1
+        if self._slow_tick % 4 == 0:
+            try:
+                self._proc_cache = get_top_processes()
+            except Exception as e:
+                logger.warning(f'Process error: {e}')
+                self._proc_cache = []
+        processes = self._proc_cache
 
         self.prev_time = now
 

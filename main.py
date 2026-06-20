@@ -111,7 +111,7 @@ async def broadcast_loop():
         logger.error(f'prime failed: {e}')
 
     while True:
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.3)
         try:
             data = collector.collect()
         except Exception as e:

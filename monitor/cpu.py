@@ -1,6 +1,10 @@
 import subprocess
+import time
 
 import psutil
+
+_cpu_temp_cache = None
+_cpu_temp_time = 0
 
 
 def prime():
@@ -8,6 +12,8 @@ def prime():
 
 
 def get_cpu_info():
+    global _cpu_temp_cache, _cpu_temp_time
+
     per_core = psutil.cpu_percent(interval=None, percpu=True)
     percent = sum(per_core) / len(per_core) if per_core else 0.0
     freq = psutil.cpu_freq()
@@ -20,9 +26,12 @@ def get_cpu_info():
         'freq': round(freq.current / 1000, 2) if freq else None,
     }
 
-    temp = _get_cpu_temp()
-    if temp is not None:
-        info['temp'] = temp
+    now = time.time()
+    if now - _cpu_temp_time > 10:
+        _cpu_temp_cache = _get_cpu_temp()
+        _cpu_temp_time = now
+    if _cpu_temp_cache is not None:
+        info['temp'] = _cpu_temp_cache
 
     return info
 
@@ -33,7 +42,7 @@ def _get_cpu_temp():
             ['powershell', '-Command',
              'Get-CimInstance -Namespace root/WMI -ClassName MSAcpi_ThermalZoneTemperature '
              '| Select-Object -ExpandProperty CurrentTemperature'],
-            capture_output=True, text=True, timeout=3,
+            capture_output=True, text=True, timeout=2,
         )
         if result.returncode == 0 and result.stdout.strip():
             temps = []
