@@ -467,9 +467,11 @@ th{{color:#8892a0;font-weight:600;font-size:.7rem;letter-spacing:.5px}}
             try:
                 t = round(time.time() - self.start_time, 1) if self.start_time else 0
                 gpu_info = data.get('gpu', {})
+                ct = data['cpu'].get('temp')
                 row = {
                     't': t, 'cpu': data['cpu']['percent'],
                     'gpu': gpu_info.get('percent', 0), 'gt': gpu_info.get('temp', 0),
+                    'ct': ct if ct is not None else 0,
                     'ram': data['memory']['percent'], 'vp': gpu_info.get('vram_percent', 0),
                     'alerts': len(data.get('log_events', [])),
                 }

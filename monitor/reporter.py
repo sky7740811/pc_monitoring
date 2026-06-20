@@ -162,6 +162,7 @@ def generate(raw_path, start_time, duration, summary, logs, top5_cpu, top5_ram, 
     c_cpu = json.dumps([r['cpu'] for r in rows])
     c_gpu = json.dumps([r['gpu'] for r in rows])
     c_gt = json.dumps([r['gt'] for r in rows])
+    c_ct = json.dumps([r.get('ct', 0) for r in rows])
 
     html = f'''<!DOCTYPE html>
 <html lang="ko">
@@ -214,7 +215,8 @@ new Chart(document.getElementById('chart'), {{
     datasets:[
       {{label:'CPU',data:{c_cpu},borderColor:'#00d4ff',borderWidth:1.5,fill:false,tension:.3,pointRadius:0,yAxisID:'y'}},
       {{label:'GPU',data:{c_gpu},borderColor:'#ff6b35',borderWidth:1.5,fill:false,tension:.3,pointRadius:0,yAxisID:'y'}},
-      {{label:'온도',data:{c_gt},borderColor:'#ef4444',borderWidth:1,borderDash:[3,3],fill:false,tension:.3,pointRadius:0,yAxisID:'y1'}},
+      {{label:'GPU 온도',data:{c_gt},borderColor:'#ef4444',borderWidth:1,borderDash:[3,3],fill:false,tension:.3,pointRadius:0,yAxisID:'y1'}},
+      {{label:'CPU 온도',data:{c_ct},borderColor:'#00d4ff',borderWidth:1,borderDash:[2,4],fill:false,tension:.3,pointRadius:0,yAxisID:'y1'}},
     ]}},
     options:{{
       responsive:true,maintainAspectRatio:false,animation:false,
