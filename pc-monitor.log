@@ -187,3 +187,10 @@
 2026-06-20 13:50:09,230 [ERROR] Shutdown summary error: name 'ctypes' is not defined
 2026-06-20 13:50:09,231 [INFO] Session saved: D:\cpu\pc-monitor\log\2026-06-20_134915.html
 2026-06-20 13:50:09,274 [INFO] Detailed report saved: D:\cpu\pc-monitor\log\report_2026-06-20_134915.html
+2026-06-20 13:53:20,336 [DEBUG] Using proactor: IocpProactor
+2026-06-20 13:53:20,501 [INFO] Collector primed
+2026-06-20 13:54:09,748 [INFO] Killed: OpenCode.exe (pid=14160)
+2026-06-20 13:55:38,708 [DEBUG] Using proactor: IocpProactor
+2026-06-20 13:55:41,246 [INFO] Collector primed
+2026-06-20 13:55:41,261 [INFO] Session saved: D:\cpu\pc-monitor\log\2026-06-20_135538.html
+2026-06-20 13:55:41,261 [INFO] Session saved on shutdown

@@ -204,23 +204,39 @@ function update(d) {
 }
 
 function renderProcs() {
-  const sorted = [...procData].sort((a, b) => {
+  // Merge duplicates by name
+  const merged = {};
+  for (const p of procData) {
+    const key = p.name;
+    if (!merged[key]) {
+      merged[key] = { name: key, display_name: p.display_name || key,
+                      cpu_percent: 0, memory_mb: 0, gpu_sm: 0, count: 0 };
+    }
+    merged[key].cpu_percent += Number(p.cpu_percent) || 0;
+    merged[key].memory_mb += Number(p.memory_mb) || 0;
+    merged[key].gpu_sm += Number(p.gpu_sm) || 0;
+    merged[key].count += 1;
+  }
+  const mergedArr = Object.values(merged);
+  // Sort
+  mergedArr.sort((a, b) => {
     let va, vb;
     if (sortCol === 'cpu') { va = a.cpu_percent; vb = b.cpu_percent; }
     else if (sortCol === 'ram') { va = a.memory_mb; vb = b.memory_mb; }
-    else { va = Number(a.gpu_sm) || 0; vb = Number(b.gpu_sm) || 0; }
+    else { va = a.gpu_sm; vb = b.gpu_sm; }
     return sortAsc ? va - vb : vb - va;
   });
   let ph = '';
-  for (const p of sorted) {
+  for (const p of mergedArr) {
     const cw = Math.min(100, p.cpu_percent);
     const mw = Math.min(100, p.memory_mb / 512 * 100);
     const ms = p.memory_mb > 1024 ? (p.memory_mb / 1024).toFixed(1) + 'G' : p.memory_mb + 'M';
-    const gw = Number(p.gpu_sm) || 0;
-    const displayName = p.display_name || p.name;
+    const gw = Math.min(100, p.gpu_sm);
+    const cnt = p.count > 1 ? ' (' + p.count + ')' : '';
+    const displayName = p.display_name + cnt;
     ph += '<div class="proc-row" style="grid-template-columns:1fr 55px 55px 50px">'
        + '<span class="proc-name" title="' + p.name + '">' + displayName + '</span>'
-       + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar cpu" style="width:' + cw + '%"></div></div><span class="proc-stat">' + p.cpu_percent + '%</span></div>'
+       + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar cpu" style="width:' + cw + '%"></div></div><span class="proc-stat">' + p.cpu_percent.toFixed(1) + '%</span></div>'
        + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar mem" style="width:' + mw + '%"></div></div><span class="proc-stat">' + ms + '</span></div>'
        + '<div style="display:flex;align-items:center;gap:4px"><div class="proc-bar-wr" style="flex:1"><div class="proc-bar" style="background:#ff6b35;width:' + gw + '%"></div></div><span class="proc-stat">' + gw + '%</span></div>'
        + '</div>';
